@@ -1,0 +1,12 @@
+# Reference only: phase-one scripts use CDP_BROWSER_URL.
+# This TOML is not loaded yet. No browser launch or remote tunnel exposure.
+[browser]
+endpoint = "http://127.0.0.1:9222"
+mode = "attach"
+new_browser = false
+bring_to_front = false
+
+[mcp]
+usage_statistics = false
+performance_crux = false
+redact_network_headers = true

@@ -1,0 +1,17 @@
+{
+  "name": "remote-browser-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Nonintrusive CDP and Chrome DevTools MCP connection test harness",
+  "type": "module",
+  "scripts": {
+    "doctor": "node scripts/doctor.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "mcp": "node scripts/run-mcp.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "chrome-devtools-mcp": "1.12.0"
+  },
+  "engines": {"node": ">=22"}
+}
