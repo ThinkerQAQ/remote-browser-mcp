@@ -25,7 +25,7 @@ smoke 只列出标签页总数，不输出页面内容。
 - 使用官方 Chrome DevTools MCP 接入现有浏览器。
 - 不重新启动 Edge，不主动切换窗口。
 - 不保存 Cookie、Token 等浏览器会话数据。
-- 当前尚不提供 ChatGPT 远程 HTTPS MCP 端点。
+- 独立 ChatGPT 远程隧道尚未注册；本地 MCP 代理已支持。
 - 连接复用守护进程与远程鉴权属于下一阶段。
 
 上游项目：[Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp)。

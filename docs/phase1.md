@@ -12,7 +12,7 @@ Windows, Node.js 22+, Microsoft Edge. Use the Windows-native Node.js runtime whe
 2. Run `npm ci` in this directory using PowerShell (not WSL npm).
 3. Run `npm run doctor`. Expect `CDP_READY=true`. An HTTP 404 can be acceptable when the `DevToolsActivePort` WebSocket probe succeeds.
 4. Run `npm run smoke`. Expect `MCP_CONNECTED=true` and `BROWSER_LIST_PAGES_OK=true`.
-5. `npm run mcp` runs the upstream MCP over stdio for a compatible local client.
+5. `npm run mcp` now starts the guarded phase-two proxy over stdio; see Phase 2 documentation.
 
 ## Safety
 

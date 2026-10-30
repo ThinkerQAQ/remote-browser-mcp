@@ -1,12 +1,9 @@
-# Reference only: phase-one scripts use CDP_BROWSER_URL.
-# This TOML is not loaded yet. No browser launch or remote tunnel exposure.
+# Loaded by scripts/proxy.mjs; override with gitignored config.toml.
+# Never expose the CDP port to a public network.
 [browser]
 endpoint = "http://127.0.0.1:9222"
-mode = "attach"
-new_browser = false
-bring_to_front = false
 
-[mcp]
-usage_statistics = false
-performance_crux = false
-redact_network_headers = true
+[security]
+# Opt-in overrides: default keeps existing user tabs protected.
+allow_existing_pages = false
+allow_javascript = false
