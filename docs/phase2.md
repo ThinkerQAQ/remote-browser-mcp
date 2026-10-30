@@ -32,3 +32,7 @@ Verify `tunnel-client runtimes status remote-browser`, then create a private Cha
 - Only `about:blank` focus behavior has been verified. Other site behavior may differ.
 
 Use the read-only `browser_status` tool to diagnose CDP readiness. The tunnel can be ready while Edge remote debugging is disabled or unresponsive. An Edge banner stating that it is controlled by automated software is expected when debugging is active.
+
+## Runtime diagnostics
+
+If ChatGPT cannot call the plugin, check both plugin installation and the local runtime. Run `tunnel-client runtimes status remote-browser --json`. A private launch status and Node error log are written under `~/.local/state/remote-browser-mcp/`; do not upload these logs or grant public access. A healthy tunnel does not guarantee the plugin is installed or that Edge CDP is authorized. The private ChatGPT plugin must be explicitly installed from its plugin page and enabled for the conversation.

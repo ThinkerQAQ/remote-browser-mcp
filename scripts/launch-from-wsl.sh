@@ -16,4 +16,15 @@ if [ ! -f "$node_exe" ]; then
   echo "Windows Node.js not found; set REMOTE_BROWSER_WINDOWS_NODE" >&2
   exit 2
 fi
-exec "$node_exe" scripts/proxy.mjs
+# Keep startup diagnostics in a private local state directory, not the repo.
+umask 077
+log_dir="$HOME/.local/state/remote-browser-mcp"
+mkdir -p "$log_dir"
+printf '%s\n' 'starting_windows_node' > "$log_dir/launch.status"
+if "$node_exe" scripts/proxy.mjs 2>> "$log_dir/launch.err.log"; then
+  code=0
+else
+  code=$?
+fi
+printf 'exit=%s\n' "$code" > "$log_dir/launch.status"
+exit "$code"

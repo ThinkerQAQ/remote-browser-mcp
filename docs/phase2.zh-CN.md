@@ -32,3 +32,7 @@ sh scripts/setup-tunnel.sh tunnel_YOUR_NEW_ID
 - 已验证 `about:blank` 不抢占前台窗口，真实网站仍需单独测试。
 
 通过只读 `browser_status` 检查浏览器 CDP 是否真正可用；隧道 `ready` 不能替代此项。Edge 出现「受自动测试软件控制」提示属于调试模式的正常现象。
+
+## 启动诊断
+
+插件无法通过 `@` 找到时，先确认它在 ChatGPT 中已安装；创建成功不等于安装。然后执行 `tunnel-client runtimes status remote-browser --json` 查看托管运行状态。私有启动状态与 Node 错误日志保存在 `~/.local/state/remote-browser-mcp/`，不要上传这些文件或公开访问。隧道健康、插件安装状态和 Edge CDP 授权分别检查，不能相互替代。
