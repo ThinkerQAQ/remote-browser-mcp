@@ -34,6 +34,9 @@ npm run mcp
 
 Use [the phase-two guide](docs/phase2.md) to connect your own dedicated OpenAI tunnel through the managed local runtime and create a **private ChatGPT plugin** using the tunnel ID. Keep all identifiers, keys, browser profiles, and user-specific plugin manifests out of this repository. Tunnel readiness does not guarantee the Edge CDP WebSocket is working; call `browser_status` first.
 
+
+Skill loading does not prove MCP tool discovery. Register and test the MCP connection separately from skill packaging. Imported MCP bundles may be Desktop only; see [registration and troubleshooting](docs/phase2.md#chatgpt-registration-and-acceptance). If upstream discovery fails, only `browser_status` is advertised; refresh the connection after recovery.
+
 ## Limitations
 
 - Attaches to an existing Windows Edge session; it does **not** start or repair remote debugging automatically.
