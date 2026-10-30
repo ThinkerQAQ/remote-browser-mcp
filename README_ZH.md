@@ -34,6 +34,9 @@ npm run mcp
 
 按[阶段二指南](docs/phase2.zh-CN.md)配置个人专属 OpenAI 隧道，然后通过隧道 ID 创建**私有 ChatGPT 插件**。不要把个人隧道、运行密钥、浏览器配置文件或私有插件清单提交到公开仓库。优先调用 `browser_status` 验证 Edge，而非仅依赖隧道 `ready` 状态。
 
+
+能加载 Skill 不代表已发现 MCP 工具。MCP 连接需要单独注册和验收，导入的 MCP 包可能受 Desktop only 限制，详见[注册与排查](docs/phase2.zh-CN.md#chatgpt-注册与验收)。上游工具发现失败时只提供 `browser_status`，恢复后需要刷新连接。
+
 ## 限制与安全
 
 - 只连接现有 Edge，不自动修复或重启浏览器调试配置。

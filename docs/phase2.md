@@ -20,7 +20,7 @@ After you have a new tunnel ID, with `CONTROL_PLANE_API_KEY` available in the WS
 sh scripts/setup-tunnel.sh tunnel_YOUR_NEW_ID
 ```
 
-Verify `tunnel-client runtimes status remote-browser`, then create a private ChatGPT plugin with the tunnel ID (Plugin Creator or ChatGPT Plugins → Add → Custom MCP server → Tunnel). Do not upload the user-specific plugin manifest to this repository.
+Verify `tunnel-client runtimes status remote-browser`, then follow the registration and acceptance steps below. Keep user-specific plugin manifests out of this repository.
 
 ## Default safety policy
 
@@ -33,6 +33,38 @@ Verify `tunnel-client runtimes status remote-browser`, then create a private Cha
 
 Use the read-only `browser_status` tool to diagnose CDP readiness. The tunnel can be ready while Edge remote debugging is disabled or unresponsive. An Edge banner stating that it is controlled by automated software is expected when debugging is active.
 
-## Runtime diagnostics
+## Runtime logs
 
-If ChatGPT cannot call the plugin, check both plugin installation and the local runtime. Run `tunnel-client runtimes status remote-browser --json`. A private launch status and Node error log are written under `~/.local/state/remote-browser-mcp/`; do not upload these logs or grant public access. A healthy tunnel does not guarantee the plugin is installed or that Edge CDP is authorized. The private ChatGPT plugin must be explicitly installed from its plugin page and enabled for the conversation.
+Run `tunnel-client runtimes status remote-browser --json`. Private launch status and Node error logs are under `~/.local/state/remote-browser-mcp/`; do not upload them.
+
+## ChatGPT registration and acceptance
+
+A running tunnel, a packaged skill and a working ChatGPT MCP connection are separate milestones. Creating a plugin archive with Plugin Creator is not evidence that ChatGPT has discovered its tools.
+
+For the documented direct connection flow:
+
+1. Verify local MCP initialization and `tools/list` with MCP Inspector. `browser_status` must be present. If the browser upstream fails to initialize or list tools, the proxy exposes only `browser_status`; upstream initialization and listing each have a five-second request timeout. Recover the upstream, then request `tools/list` again.
+2. In ChatGPT Plugins, choose Add custom MCP server → Tunnel, select your existing dedicated tunnel and complete the connection flow. Review the tools actually discovered. Check account/workspace access and tunnel association if connection fails.
+3. Install/enable the resulting plugin and test it in a new conversation. Call `browser_status` first, then verify a dedicated background test tab. Record each result separately.
+4. If packaging skills around an existing app, use `.app.json` to reference the registered app ID. This file does not register an app or grant access. Use an app ID, not the plugin page ID; for example, `plugin_asdk_app_example` refers to `asdk_app_example`.
+
+Imported bundles that declare MCP servers in `mcp.json` or `.mcp.json` can be marked **Desktop only** and unavailable on the web, including with remote HTTPS servers. Adding `.app.json` alone does not remove that label. Check the actual plugin metadata and supported host before choosing a packaging route. Skill availability alone does not prove tool availability.
+
+After changing server tool metadata, restart the server, refresh the direct MCP connection in ChatGPT Plugins, confirm the discovered tools, and start a new conversation. If discovery previously exposed only diagnostics, refresh again after upstream recovery to load the browser tools.
+
+## Troubleshooting by layer
+
+| Symptom | Check | Acceptance evidence |
+| --- | --- | --- |
+| Tunnel is stopped | Runtime status and private launch/error logs | Process running and tunnel connected |
+| Tunnel is ready, but browser fails | `browser_status` or `npm run doctor` | `cdp_ready=true` or `CDP_READY=true` |
+| Only `browser_status` is discovered | Upstream MCP startup, dependencies and local configuration; retry discovery after repair | Browser tools appear in refreshed `tools/list` |
+| Skill loads, but no MCP tools | Registered app connection, actual discovered tools, bundle declarations, Desktop only label and host | A real tool call succeeds in the target conversation |
+| Plugin is missing from `@` | Account/workspace, installation/enabling, supported host and a new conversation | Plugin selected and tool called |
+| Repeated approval prompts | Which tool/host requests approval: DV/terminal, ChatGPT MCP, or Edge CDP | Record that approval layer separately |
+
+Do not treat a single installation-status field as conclusive when other interfaces disagree. A persistent transport reuses a connection; it does not bypass host/tool approval policy. Avoid diagnosing tool-registration failures by repeatedly opening tabs or starting more CDP clients.
+
+The registration mismatch observed during initial setup remains an **unverified deployment diagnosis** until the repaired connection is exercised end to end. The discovery fallback fixes diagnostic availability; it does not repair Edge CDP or register an app automatically.
+
+Official references (checked 2026-10-30): [Connect and test](https://developers.openai.com/plugins/deploy/connect-chatgpt), [Plugin management and app references](https://learn.chatgpt.com/docs/enterprise/plugin-management).

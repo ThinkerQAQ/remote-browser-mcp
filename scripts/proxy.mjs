@@ -6,6 +6,7 @@ import {CallToolRequestSchema,ListToolsRequestSchema} from "@modelcontextprotoco
 import {settings,upstreamOptions} from "./lib/config.mjs";
 import {allowedTools,enforceOwnedPage,hideExistingPages} from "./lib/policy.mjs";
 import {browserStatus} from "./lib/status.mjs";
+import {discoverTools} from "./lib/discovery.mjs";
 
 let upstream=null, visibleTools=[], selectedOwned=false, selectedPageId=null;
 const owned=new Set();
@@ -18,8 +19,8 @@ async function attach(){
   const transport=new StdioClientTransport({...upstreamOptions(),stderr:"pipe"});
   const client=new Client({name:"remote-browser-proxy",version:"0.2.0"});
   try{
-    await client.connect(transport);
-    const listing=await client.listTools();
+    await client.connect(transport,{timeout:5000});
+    const listing=await client.listTools({}, {timeout:5000});
     visibleTools=allowedTools(listing.tools,{allowJS:settings.allowJS});
     upstream=client;
     console.error("Proxy ready; tools="+visibleTools.length);
@@ -35,10 +36,10 @@ const server=new Server({name:"remote-browser-mcp",version:"0.2.0"},{
   capabilities:{tools:{}},
   instructions:"Use new_page to open a dedicated background tab. Never activate existing tabs."
 });
-server.setRequestHandler(ListToolsRequestSchema,async()=>{
-  await attach();
-  return {tools:[{name:"browser_status",description:"Read-only CDP health probe (no user tabs or website content).",inputSchema:{type:"object",properties:{},additionalProperties:false}},...visibleTools]};
-});
+server.setRequestHandler(ListToolsRequestSchema,()=>discoverTools(
+  async()=>{await attach();return visibleTools;},
+  ()=>console.error("Browser upstream unavailable; only browser_status is advertised. Retry tools/list after recovery.")
+));
 async function call(name,params){
   if(name==="browser_status") {
     const health=await browserStatus();
