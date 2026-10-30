@@ -28,7 +28,7 @@ try{
   created=active[0];
   const selected=await client.callTool({name:"select_page",arguments:{pageId:created,bringToFront:true}});
   check("FORCED_NO_BRING_TO_FRONT",selected.isError!==true);
-  const snapshot=await client.callTool({name:"take_snapshot",arguments:{}});
+  const snapshot=await client.callTool({name:"take_snapshot",arguments:{pageId:created}});
   if(snapshot.isError)console.log("SNAPSHOT_ERROR="+body(snapshot).slice(0,200));
   check("SNAPSHOT_OK",snapshot.isError!==true);
 }catch(err){console.error("TEST_FAILED="+String(err.message||err).slice(0,180));process.exitCode=2;}

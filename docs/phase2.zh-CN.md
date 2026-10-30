@@ -20,7 +20,7 @@
 sh scripts/setup-tunnel.sh tunnel_YOUR_NEW_ID
 ```
 
-通过 `tunnel-client runtimes status remote-browser` 检查托管进程健康状态，再在 ChatGPT 插件设置里连接该隧道。
+通过 `tunnel-client runtimes status remote-browser` 检查托管进程健康状态，再通过 Plugin Creator，或「插件 → 添加 → 添加自定义 MCP 服务器 → 隧道」创建私有插件，不将个人插件清单上传到仓库。
 
 ## 默认安全规则
 
@@ -30,3 +30,5 @@ sh scripts/setup-tunnel.sh tunnel_YOUR_NEW_ID
 - 新标签页仍共享 Edge 网站登录态，因此 AI 可能看到页面内的私密信息，必须谨慎授予访问权限。
 - 仅对只读 `list_pages` 进行连接失败后的重试，避免重复执行具有副作用的操作。
 - 已验证 `about:blank` 不抢占前台窗口，真实网站仍需单独测试。
+
+通过只读 `browser_status` 检查浏览器 CDP 是否真正可用；隧道 `ready` 不能替代此项。Edge 出现「受自动测试软件控制」提示属于调试模式的正常现象。
