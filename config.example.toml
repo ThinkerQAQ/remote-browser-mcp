@@ -1,6 +1,8 @@
 # Loaded by scripts/proxy.mjs; override with gitignored config.toml.
 # Never expose the CDP port to a public network.
 [browser]
+# edge (default) or chrome; optional user_data_dir for a custom local profile.
+name = "edge"
 endpoint = "http://127.0.0.1:9222"
 
 [security]

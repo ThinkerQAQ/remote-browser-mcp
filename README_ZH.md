@@ -2,7 +2,7 @@
 
 [English](README.md) · [安全说明](SECURITY.md) · [参与贡献](CONTRIBUTING.md) · [阶段一](docs/phase1.zh-CN.md) · [阶段二](docs/phase2.zh-CN.md)
 
-通过 Chrome DevTools MCP 和可选的 OpenAI 持久隧道，让 AI 连接**已经运行的 Microsoft Edge**。复用当前浏览器登录态，同时默认保护已有用户标签页。主要面向 Windows（原生一键配置，同时兼容旧 WSL2 方案），不另起无头浏览器。
+通过 Chrome DevTools MCP 和可选的 OpenAI 持久隧道，让 AI 连接**已经运行的 Microsoft Edge 或 Google Chrome**。复用当前浏览器登录态，同时默认保护已有用户标签页。支持 Windows、Linux、macOS 原生配置，同时兼容旧 WSL2 方案，不另起无头浏览器。
 
 > **实验性项目：** MCP 隧道显示健康，不等于 Edge 的 CDP WebSocket 可用。实际网站可能抢焦点，不能承诺绝对无干扰。
 
@@ -18,7 +18,9 @@
 
 ## 一键配置（推荐）
 
-下载[源码 ZIP](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip)，解压后双击 **`setup.cmd`**。中英文 Windows 向导负责安装依赖、加密保存凭据、启动服务和引导 ChatGPT 注册，**新安装不需要 WSL**。账号登录和浏览器授权仍由本人完成。详见[安装、续配和自启说明](docs/setup.zh-CN.md)。
+**Windows：** `setup.cmd` · **Linux：** `sh setup.sh` · **macOS：** `setup.command` 或 `sh setup.sh`。详见 [Linux/macOS 指南](docs/setup-unix.zh-CN.md)与 [Windows 指南](docs/setup.zh-CN.md)。
+
+下载[源码包](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip)，解压到长期使用的目录，运行对应平台的入口。中英文向导负责安装项目依赖、安全保存凭据、启动服务和引导 ChatGPT 注册；账号登录和浏览器授权仍由本人完成。
 
 ## 手动启动（Windows PowerShell）
 
@@ -38,12 +40,11 @@ npm run mcp
 
 按[阶段二指南](docs/phase2.zh-CN.md)配置个人专属 OpenAI 隧道，然后通过隧道 ID 创建**私有 ChatGPT 插件**。不要把个人隧道、运行密钥、浏览器配置文件或私有插件清单提交到公开仓库。优先调用 `browser_status` 验证 Edge，而非仅依赖隧道 `ready` 状态。
 
-
 能加载 Skill 不代表已发现 MCP 工具。MCP 连接需要单独注册和验收，导入的 MCP 包可能受 Desktop only 限制，详见[注册与排查](docs/phase2.zh-CN.md#chatgpt-注册与验收)。上游工具发现失败时只提供 `browser_status`，恢复后需要刷新连接。
 
 ## 限制与安全
 
-- 只连接现有 Edge，不自动修复或重启浏览器调试配置。
+- 连接已配置的 Edge/Chrome 调试会话；Unix 向导可在明确选择后启动独立浏览器配置，不会静默重启用户窗口。
 - 后台操作属于尽力保证；真实网站可能弹出原生对话框，改变窗口焦点。
 - 隧道健康、浏览器 CDP 可用、ChatGPT 插件成功调用，是三个独立的验收项。
 - 默认禁止操作原有用户标签页，必须明确修改配置才能开放。

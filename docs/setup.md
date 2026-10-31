@@ -2,6 +2,8 @@
 
 [简体中文](setup.zh-CN.md) · [README](../README.md)
 
+Linux and macOS users: use the [native Unix setup guide](setup-unix.md).
+
 ## Start
 
 Download the repository's [source ZIP](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip), extract it to a permanent folder and double-click **`setup.cmd`**. Do not run inside the ZIP viewer or move/delete the installation folder afterward.
