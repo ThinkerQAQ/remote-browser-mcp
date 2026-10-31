@@ -1,0 +1,76 @@
+name: Release
+on:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify ${{ matrix.os }} / Node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run check
+      - name: Verify Windows setup offline
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/setup-windows.ps1
+      - name: Verify Unix setup syntax
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sh -n setup.sh install.sh setup.command
+  publish:
+    name: Build and publish verified artifacts
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release version
+        shell: bash
+        run: |
+          node -e 'if ("v"+require("./package.json").version !== process.env.GITHUB_REF_NAME) process.exit(1)'
+          test -f LICENSE
+          test -f THIRD_PARTY_NOTICES.md
+          test -f docs/release-v0.3.0.md
+      - name: Build three platform archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          prefix="remote-browser-mcp-${GITHUB_REF_NAME}/"
+          git archive --format=zip --prefix="$prefix" HEAD > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip"
+          git archive --format=tar --prefix="$prefix" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-linux.tar.gz"
+          git archive --format=tar --prefix="$prefix" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz"
+          (
+            cd dist
+            sha256sum *.zip *.tar.gz > SHA256SUMS
+            sha256sum -c SHA256SUMS
+          )
+          unzip -Z1 "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip" | grep -Fx "$prefix/LICENSE"
+          unzip -Z1 "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip" | grep -Fx "$prefix/THIRD_PARTY_NOTICES.md"
+          unzip -Z1 "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip" | grep -Fx "$prefix/setup.cmd"
+          tar -tzf "dist/remote-browser-mcp-${GITHUB_REF_NAME}-linux.tar.gz" | grep -Fx "$prefix/setup.sh"
+          tar -tzf "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz" | grep -Fx "$prefix/setup.command"
+          if git ls-files | grep -E '(^|/)(config[.]toml|node_modules|Data|[.]env)(/|$)'; then
+            echo 'Refusing to release tracked private configuration' >&2
+            exit 1
+          fi
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Remote Browser MCP $GITHUB_REF_NAME — Windows, Linux and macOS" --notes-file docs/release-v0.3.0.md

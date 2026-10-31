@@ -21,7 +21,23 @@ Connect an AI assistant to your **already-running Microsoft Edge or Google Chrom
 
 **Windows:** `setup.cmd` · **Linux:** `sh setup.sh` · **macOS:** `setup.command` or `sh setup.sh`. See the [Linux/macOS guide](docs/setup-unix.md) or [Windows guide](docs/setup.md).
 
-Download the [source archive](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip), extract it to a permanent directory and use the entry for your platform. The bilingual wizard installs project dependencies, saves credentials securely, starts the runtime and guides ChatGPT registration. Account login and browser consent remain explicit user steps.
+Download the [v0.3.0 release](https://github.com/ThinkerQAQ/remote-browser-mcp/releases/tag/v0.3.0) for your platform and verify SHA-256 using `SHA256SUMS`, then run its setup entry. Or use the version-pinned bootstrap commands below. No Git clone is required. The bilingual wizard installs project dependencies, saves credentials securely, starts the runtime and guides ChatGPT registration. Account login and browser consent remain explicit user steps.
+
+### Version-pinned bootstrap
+
+Linux or macOS:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ThinkerQAQ/remote-browser-mcp/v0.3.0/install.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/ThinkerQAQ/remote-browser-mcp/v0.3.0/install.ps1 | iex
+```
+
+The bootstrap verifies the downloaded release archive against the accompanying `SHA256SUMS`. Node.js and npm dependencies are installed by the setup wizard; your own tunnel credentials and ChatGPT registration still require explicit user action. Do not publish your private tunnel ID or keys.
 
 ## Manual start (Windows PowerShell)
 

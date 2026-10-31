@@ -21,7 +21,23 @@
 
 **Windows：** `setup.cmd` · **Linux：** `sh setup.sh` · **macOS：** `setup.command` 或 `sh setup.sh`。详见 [Linux/macOS 指南](docs/setup-unix.zh-CN.md)与 [Windows 指南](docs/setup.zh-CN.md)。
 
-下载[源码包](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip)，解压到长期使用的目录，运行对应平台的入口。中英文向导负责安装项目依赖、安全保存凭据、启动服务和引导 ChatGPT 注册；账号登录和浏览器授权仍由本人完成。
+从 [v0.3.0 Release](https://github.com/ThinkerQAQ/remote-browser-mcp/releases/tag/v0.3.0) 下载对应平台的压缩包，使用 `SHA256SUMS` 验证哈希后执行平台安装入口；也可使用下方固定版本引导命令。中英文向导负责安装项目依赖、安全保存凭据、启动服务和引导 ChatGPT 注册；账号登录和浏览器授权仍由本人完成。
+
+### 固定版本一键安装
+
+Linux / macOS：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/ThinkerQAQ/remote-browser-mcp/v0.3.0/install.sh | sh
+```
+
+Windows PowerShell：
+
+```powershell
+irm https://raw.githubusercontent.com/ThinkerQAQ/remote-browser-mcp/v0.3.0/install.ps1 | iex
+```
+
+引导脚本会按照 Release 附带的 `SHA256SUMS` 验证下载产物。安装向导会补齐 Node.js 与 npm 依赖，但每位用户仍需配置自己的隧道凭据并在 ChatGPT 中授权、注册 MCP，不得公开隧道和密钥。
 
 ## 手动启动（Windows PowerShell）
 
