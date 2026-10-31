@@ -16,7 +16,7 @@ test('setup preserves user settings and round-trips Windows paths without storin
     fs.writeFileSync(file, '[browser]\nendpoint="http://127.0.0.1:9222"\n[security]\nallow_existing_pages=true\nallow_javascript=false\n');
     saveSetup(file, config); saveSetup(file, config);
     const result = parse(fs.readFileSync(file, 'utf8'));
-    assert.deepEqual(result.setup, config);
+    assert.deepEqual({...result.setup}, config);
     assert.equal(result.security.allow_existing_pages, true);
     assert.equal(result.setup.runtime_key, undefined);
     assert.equal(fs.existsSync(file + '.tmp'), false);
@@ -53,6 +53,6 @@ test('configuration CLI accepts a UTF-8 BOM from Windows pipelines', () => {
       input: '\uFEFF' + JSON.stringify(config), encoding: 'utf8'
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.deepEqual(parse(fs.readFileSync(file, 'utf8')).setup, config);
+    assert.deepEqual({...parse(fs.readFileSync(file, 'utf8')).setup}, config);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });
