@@ -92,7 +92,22 @@ npm run tunnel-status
 
 Reuse the existing tunnel. `setup-tunnel.sh` passes `--tunnel-id` and a runtime key reference so it does not need admin CRUD credentials. A bare `runtimes connect` can select an admin profile and fail on a missing `OPENAI_ADMIN_KEY`. A newly launched Windows → WSL child may not inherit the original WSL runtime-key environment. Do not copy keys into chat, source control or command arguments. The status command prints only three booleans and fails if the runtime is not ready; browser health must still be checked separately.
 
-Managed runtime supervision does not prove startup after a Windows/WSL shutdown. Check it after reboot before registering or testing an app. Automatic boot startup has not been verified.
+### Optional WSL auto-recovery (legacy installations)
+
+When running the legacy **WSL → Windows Node.js** integration, a fatal stdio EOF can terminate the `tunnel-client` process. The alias-only launcher does not guarantee an automatic restart. After the original `setup-tunnel.sh` has created `~/.config/tunnel-client/remote-browser.yaml`, enable a per-user systemd supervisor:
+
+```sh
+sh scripts/setup-wsl-service.sh install
+sh scripts/setup-wsl-service.sh status
+# Disable and remove this project's service if no longer needed:
+sh scripts/setup-wsl-service.sh remove
+```
+
+The installer requires a working `systemctl --user` session, the existing tunnel configuration, and private `~/.config/tunnel-client/runtime.env`. The credential file stays local; its values are never copied to the generated unit. The installer stops the **old managed alias** before starting the supervisor, so two clients do not compete for the same tunnel. Re-running it while the supervisor is active preserves the live session and does not restart Edge. `setup-tunnel.sh` refuses to start a second managed runtime while this supervisor is active.
+
+The service uses `Restart=always` with bounded restarts (three starts per five minutes). It is enabled for the user's systemd session; boot availability still depends on WSL/systemd being started and the user manager being available (`loginctl show-user "$USER" -p Linger`). **It does not launch Edge, bypass consent, or prove Chrome DevTools readiness.** Run `browser_status` and an ordinary read-only browser tool to verify the complete chain. The original 2026-10-31 incident was an MCP stdio EOF; the underlying child-process exit trigger was not conclusively identified.
+
+On Windows and native Linux/macOS, use the platform-specific setup wizard and startup configuration; this legacy WSL supervisor is not a substitute for their native login setup.
 
 ## Registration errors and verified acceptance
 

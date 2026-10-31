@@ -10,6 +10,7 @@ Connect an AI assistant to your **already-running Microsoft Edge or Google Chrom
 
 - Connects to an existing Edge/Chrome CDP session on loopback port 9222; tries the `DevToolsActivePort` WebSocket when `/json/version` is unavailable.
 - Supports a persistent MCP process via `tunnel-client`, without creating a new browser for each request.
+- Legacy WSL tunnel auto-recovery via an optional systemd user service; reuses the original tunnel and never restarts Edge.
 - Forces `new_page` into the background and prevents `select_page` from bringing windows forward.
 - Protects pre-existing user tabs by default; new dedicated tabs share the browser profile's authentication.
 - Explicit tool allowlist: no raw network inspection, file upload, heap snapshots, arbitrary JavaScript or newly introduced upstream tools by default.

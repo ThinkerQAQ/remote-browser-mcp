@@ -92,7 +92,22 @@ npm run tunnel-status
 
 复用已有隧道。`setup-tunnel.sh` 明确传入 `--tunnel-id` 和运行密钥引用，不需要管理权限创建资源。直接执行不带隧道 ID 的 `runtimes connect`，可能选中管理配置并因缺少 `OPENAI_ADMIN_KEY` 失败。从 Windows 新开的 WSL 子进程也可能没有继承原始 WSL 环境中的运行密钥。不要将密钥复制到聊天、仓库或命令参数中。状态命令只输出三个布尔值，运行状态不就绪时返回失败；浏览器健康仍需单独检查。
 
-托管进程监督不等于已经验证 Windows/WSL 关机后的自动启动。重启后先检查运行状态，再注册或测试 App；开机自启尚未验收。
+### WSL 旧部署的可选自动恢复
+
+使用旧版 **WSL → Windows Node.js** 链路时，MCP 子进程的 stdio 出现 EOF 可能导致整个 `tunnel-client` 退出；仅使用原来的别名启动并不能保证退出后自动重启。首次通过 `setup-tunnel.sh` 建立 `~/.config/tunnel-client/remote-browser.yaml` 后，可注册用户级 systemd 守护服务：
+
+```sh
+sh scripts/setup-wsl-service.sh install
+sh scripts/setup-wsl-service.sh status
+# 不再需要时卸载：
+sh scripts/setup-wsl-service.sh remove
+```
+
+脚本要求可用的 `systemctl --user` 会话、已有的私有隧道配置及 `~/.config/tunnel-client/runtime.env`。密钥只从本地环境文件加载，不写入生成的 service 文件或仓库。安装时会先停止**旧托管别名进程**，避免两个客户端竞争同一隧道；服务已运行时重复安装不会重启 Edge 或中断长连接。服务正常运行期间，`setup-tunnel.sh` 会阻止重复启动第二个托管运行时。
+
+服务采用 `Restart=always`，每五分钟最多启动三次。自启仍受 WSL 是否运行、systemd 用户管理器是否可用影响（`loginctl show-user "$USER" -p Linger`），并不保证 Windows 开机后 WSL 一定自行启动。该服务**不启动或重启 Edge、不跳过授权，也不代替 `browser_status` 和实际只读工具验收**。2026-10-31 已确认的直接故障为 MCP stdio EOF，子进程究竟为何关闭尚无充分证据。
+
+Windows 原生、Linux 原生和 macOS 用户仍应使用各平台的安装向导；这个守护脚本只服务于旧 WSL 部署。
 
 ## 注册报错与实测结果
 
