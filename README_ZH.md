@@ -51,4 +51,4 @@ npm run mcp
 - 默认禁止操作原有用户标签页，必须明确修改配置才能开放。
 - 浏览器调试权限可能访问已登录网站，请先阅读[安全说明](SECURITY.md)。
 
-基于 [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) 与 [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)，采用 Apache-2.0 许可证。
+基于 [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) 与 [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)。本仓库**原创集成代码**采用 [Apache-2.0](LICENSE)；上游依赖保留各自许可证。具体版本及再分发义务参见[第三方声明](THIRD_PARTY_NOTICES.md)。
