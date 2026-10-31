@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ]; then
   exit 2
 fi
 case "$1" in tunnel_*) ;; *) echo "Expected an OpenAI tunnel ID" >&2; exit 2;; esac
-if ! printenv CONTROL_PLANE_API_KEY >/dev/null; then
+if [ -z "${CONTROL_PLANE_API_KEY:-}" ]; then
   echo "Local CONTROL_PLANE_API_KEY is required" >&2
   exit 2
 fi
@@ -18,4 +18,4 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
   --tunnel-id "$1" \
   --mcp-command "/bin/sh $ROOT/scripts/launch-from-wsl.sh" \
   --runtime-api-key env:CONTROL_PLANE_API_KEY
-"$CLIENT" runtimes status remote-browser
+node "$ROOT/scripts/runtime-status.mjs"

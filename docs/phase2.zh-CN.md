@@ -68,3 +68,31 @@ sh scripts/setup-tunnel.sh tunnel_YOUR_NEW_ID
 首次接入中观察到的注册结构不匹配，在修复后的连接完成端到端实测前，仍属于**待验证的部署诊断**。工具发现降级修复解决的是诊断入口可用性，不会自动修复 Edge CDP 或注册 App。
 
 官方参考（核对于 2026-10-30）：[连接与测试](https://developers.openai.com/plugins/deploy/connect-chatgpt)、[插件管理与 App 引用](https://learn.chatgpt.com/docs/enterprise/plugin-management)。
+
+## 为什么两个创建入口结果不同
+
+| 入口 | 负责什么 | 网页版 ChatGPT |
+| --- | --- | --- |
+| 添加自定义 MCP 服务器 → 隧道 → 创建为插件 | 注册远程 App、发现服务端工具，再连接安装 | 本项目已经实测通过的接入路径 |
+| 创建插件 / Plugin Creator | 打包 Skill、资源及 MCP/App 引用 | 插件包本身不等于完成远程 App 注册；直接声明 MCP 可能受 Desktop only 限制 |
+
+两个入口最终都可能在界面中叫“插件”。关键区别是**连接注册与能力打包**，不能归纳为“MCP 可以、插件不行”。先注册并测试 MCP 连接，再按需用已注册 App 引用添加 Skill 包装；不能把压缩包中声明隧道等同于注册网页端 App。参见[官方打包文档](https://developers.openai.com/plugins/build/plugins)。
+
+## 本地运行进程停止后的恢复
+
+在已经配置运行密钥的原始 WSL 环境中执行：
+
+```sh
+sh scripts/setup-tunnel.sh tunnel_YOUR_EXISTING_ID
+npm run tunnel-status
+```
+
+复用已有隧道。`setup-tunnel.sh` 明确传入 `--tunnel-id` 和运行密钥引用，不需要管理权限创建资源。直接执行不带隧道 ID 的 `runtimes connect`，可能选中管理配置并因缺少 `OPENAI_ADMIN_KEY` 失败。从 Windows 新开的 WSL 子进程也可能没有继承原始 WSL 环境中的运行密钥。不要将密钥复制到聊天、仓库或命令参数中。状态命令只输出三个布尔值，运行状态不就绪时返回失败；浏览器健康仍需单独检查。
+
+托管进程监督不等于已经验证 Windows/WSL 关机后的自动启动。重启后先检查运行状态，再注册或测试 App；开机自启尚未验收。
+
+## 注册报错与实测结果
+
+2026-10-31 接入时，本地隧道停止，界面显示“应用配置受到速率限制”。创建请求实际返回 HTTP 424，详情包含 `upstream_status=429` 和 MCP 隧道网关探测失败。这能定位失败层，但不能据此断定网关限流的具体原因。先恢复运行进程，待限制解除后单次重试，不要连续创建 App 或隧道。
+
+恢复运行进程后，创建接口返回 HTTP 200，直接注册的 MCP App 出现在“已安装”中。新建 ChatGPT 聊天实际调用 `browser_status`，报告 `cdp_ready=true`。本地 MCP 验收发现 27 个工具，后台创建 `about:blank`、读取快照、关闭测试页均通过，原有用户标签页仍受保护。这是指定环境在测试时的结果，不代表所有网站和以后每次重启都保证通过。个人 App、隧道 ID 及会话日志不进入仓库。

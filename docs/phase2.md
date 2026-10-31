@@ -68,3 +68,31 @@ Do not treat a single installation-status field as conclusive when other interfa
 The registration mismatch observed during initial setup remains an **unverified deployment diagnosis** until the repaired connection is exercised end to end. The discovery fallback fixes diagnostic availability; it does not repair Edge CDP or register an app automatically.
 
 Official references (checked 2026-10-30): [Connect and test](https://developers.openai.com/plugins/deploy/connect-chatgpt), [Plugin management and app references](https://learn.chatgpt.com/docs/enterprise/plugin-management).
+
+## Why the two creation entries differ
+
+| Entry | Responsibility | Browser-based ChatGPT |
+| --- | --- | --- |
+| Add custom MCP server → Tunnel → Create as a plugin | Register the remote app, discover server tools, then connect/install | The verified route for this project |
+| Create plugin / Plugin Creator | Package skills, assets and server/app references | A bundle alone does not establish a registered remote app; direct MCP declarations may be Desktop only |
+
+Both routes ultimately produce something called a plugin in the UI. The distinction is **registration versus packaging**, not MCP versus plugins. First register and test the MCP connection. Add an optional skill wrapper afterward using the registered app reference; do not assume a tunnel declaration in an archive registers the same web app. See [official packaging guidance](https://developers.openai.com/plugins/build/plugins).
+
+## Recovery after the local runtime stops
+
+Run these in the original WSL environment where the runtime key is configured:
+
+```sh
+sh scripts/setup-tunnel.sh tunnel_YOUR_EXISTING_ID
+npm run tunnel-status
+```
+
+Reuse the existing tunnel. `setup-tunnel.sh` passes `--tunnel-id` and a runtime key reference so it does not need admin CRUD credentials. A bare `runtimes connect` can select an admin profile and fail on a missing `OPENAI_ADMIN_KEY`. A newly launched Windows → WSL child may not inherit the original WSL runtime-key environment. Do not copy keys into chat, source control or command arguments. The status command prints only three booleans and fails if the runtime is not ready; browser health must still be checked separately.
+
+Managed runtime supervision does not prove startup after a Windows/WSL shutdown. Check it after reboot before registering or testing an app. Automatic boot startup has not been verified.
+
+## Registration errors and verified acceptance
+
+On 2026-10-31, the UI displayed an app-configuration rate-limit error while the local tunnel was stopped. The registration request returned HTTP 424, with `upstream_status=429` and an MCP tunnel gateway probe failure. This identifies the failing layer; it does not establish why the gateway rate-limited the probe. Restore the runtime first and allow any limit to clear before one controlled retry; do not repeatedly create apps or tunnels.
+
+After restoring the runtime, registration returned HTTP 200 and the direct MCP app appeared under Installed. A new ChatGPT chat called `browser_status` and reported `cdp_ready=true`. Local MCP acceptance discovered 27 tools and passed background `about:blank` creation, snapshot and cleanup. Existing user tabs remained protected. This is a point-in-time result for the tested environment, not a guarantee for every website or future restart. Keep personal app/tunnel IDs and session logs outside the repository.
