@@ -10,18 +10,29 @@ try {
             throw 'InstallRoot is not empty. Choose an empty installation directory.'
         }
         $headers = @{'User-Agent'='RemoteBrowserMCP-Setup'}
-        $commit = Invoke-RestMethod -TimeoutSec 30 -Headers $headers 'https://api.github.com/repos/ThinkerQAQ/remote-browser-mcp/commits/main'
-        if ($commit.sha -notmatch '^[a-f0-9]{40}$') { throw 'Invalid source commit' }
-        Write-Host "Installing source commit $($commit.sha)"
+        Write-Host 'Installing pinned Remote Browser MCP v0.3.0'
         $temp = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Force $temp | Out-Null
         try {
-            $archive = Join-Path $temp 'source.zip'
-            Invoke-WebRequest -UseBasicParsing -Headers $headers -TimeoutSec 120 -Uri "https://github.com/ThinkerQAQ/remote-browser-mcp/archive/$($commit.sha).zip" -OutFile $archive
-            Expand-Archive $archive (Join-Path $temp 'source')
-            $source = Get-ChildItem (Join-Path $temp 'source') -Directory | Select-Object -First 1
+            $asset = 'remote-browser-mcp-v0.3.0-windows.zip'
+            $url = 'https://github.com/ThinkerQAQ/remote-browser-mcp/releases/download/v0.3.0'
+            $archive = Join-Path $temp $asset
+            $checksums = Join-Path $temp 'SHA256SUMS'
+            Invoke-WebRequest -UseBasicParsing -Headers $headers -TimeoutSec 180 -Uri "$url/$asset" -OutFile $archive
+            Invoke-WebRequest -UseBasicParsing -Headers $headers -TimeoutSec 60 -Uri "$url/SHA256SUMS" -OutFile $checksums
+            $expected = $null
+            foreach ($line in (Get-Content -LiteralPath $checksums)) {
+                $parts = $line.Trim() -split '\s+', 2
+                if ($parts.Count -eq 2 -and $parts[1].TrimStart('*') -eq $asset) { $expected = $parts[0]; break }
+            }
+            if (!$expected -or $expected -notmatch '^[a-fA-F0-9]{64}$') { throw 'Invalid release checksum.' }
+            $actual = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash
+            if ($actual -ine $expected) { throw 'Release archive checksum mismatch.' }
+            Expand-Archive -LiteralPath $archive -DestinationPath (Join-Path $temp 'source')
+            $source = Join-Path (Join-Path $temp 'source') 'remote-browser-mcp-v0.3.0'
+            if (!(Test-Path (Join-Path $source 'scripts\setup.ps1'))) { throw 'Invalid project archive.' }
             New-Item -ItemType Directory -Force $InstallRoot | Out-Null
-            Copy-Item (Join-Path $source.FullName '*') $InstallRoot -Recurse -Force
+            Copy-Item (Join-Path $source '*') $InstallRoot -Recurse -Force
         } finally { Remove-Item $temp -Recurse -Force -ErrorAction SilentlyContinue }
     }
     & (Join-Path $InstallRoot 'scripts\setup.ps1') -InstallRoot $InstallRoot

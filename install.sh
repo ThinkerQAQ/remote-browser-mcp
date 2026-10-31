@@ -14,11 +14,24 @@ if [ ! -f "$ROOT/setup.sh" ]; then
   mkdir -p "$STATE"; chmod 700 "$STATE"
   TEMP_DIR=$(mktemp -d "$STATE/source-download.XXXXXXXX")
   trap 'rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
-  curl --fail --location --silent --show-error --max-time 120 https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.tar.gz -o "$TEMP_DIR/source.tar.gz"
-  tar -xzf "$TEMP_DIR/source.tar.gz" -C "$TEMP_DIR"
-  [ -f "$TEMP_DIR/remote-browser-mcp-main/setup.sh" ] || { echo 'Invalid project archive.' >&2; exit 2; }
+  ASSET="remote-browser-mcp-v0.3.0-$(case "$(uname -s)" in Linux) echo linux;; Darwin) echo macos;; esac).tar.gz"
+  URL="https://github.com/ThinkerQAQ/remote-browser-mcp/releases/download/v0.3.0"
+  curl --fail --location --silent --show-error --max-time 180 "$URL/$ASSET" -o "$TEMP_DIR/$ASSET"
+  curl --fail --location --silent --show-error --max-time 60 "$URL/SHA256SUMS" -o "$TEMP_DIR/SHA256SUMS"
+  EXPECTED=$(awk -v n="$ASSET" '$2 == n {print $1; exit}' "$TEMP_DIR/SHA256SUMS")
+  case "$EXPECTED" in ????????????????????????????????????????????????????????????????) ;; *) echo 'Invalid release checksum.' >&2; exit 2;; esac
+  if command -v sha256sum >/dev/null 2>&1; then
+    ACTUAL=$(sha256sum "$TEMP_DIR/$ASSET" | awk '{print $1}')
+  elif command -v shasum >/dev/null 2>&1; then
+    ACTUAL=$(shasum -a 256 "$TEMP_DIR/$ASSET" | awk '{print $1}')
+  else
+    echo 'SHA-256 checker required (sha256sum or shasum).' >&2; exit 2
+  fi
+  [ "$ACTUAL" = "$EXPECTED" ] || { echo 'Release archive checksum mismatch.' >&2; exit 2; }
+  tar -xzf "$TEMP_DIR/$ASSET" -C "$TEMP_DIR"
+  [ -f "$TEMP_DIR/remote-browser-mcp-v0.3.0/setup.sh" ] || { echo 'Invalid project archive.' >&2; exit 2; }
   mkdir -p "$ROOT"
-  cp -R "$TEMP_DIR/remote-browser-mcp-main/." "$ROOT/"
+  cp -R "$TEMP_DIR/remote-browser-mcp-v0.3.0/." "$ROOT/"
   rm -rf "$TEMP_DIR"; trap - EXIT HUP INT TERM
 fi
 exec sh "$ROOT/setup.sh" "$@"
