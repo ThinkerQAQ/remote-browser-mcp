@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import {spawnSync} from 'node:child_process';
 import {parse} from 'smol-toml';
 import {saveSetup, validateSetup} from '../scripts/lib/setup-config.mjs';
 import {recordSetupHealth} from '../scripts/lib/setup-health.mjs';
@@ -41,5 +42,17 @@ test('installer probe checkpoints real status and never serializes upstream deta
     assert.equal(status.private, undefined);
     await recordSetupHealth(async () => { throw Error('secret detail'); }, file);
     assert.equal(JSON.parse(fs.readFileSync(file)).cdp_ready, false);
+  } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});
+
+test('configuration CLI accepts a UTF-8 BOM from Windows pipelines', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'setup-stdin-'));
+  try {
+    const file = path.join(dir, 'config.toml');
+    const result = spawnSync(process.execPath, ['scripts/setup-config.mjs', 'save', file], {
+      input: '\uFEFF' + JSON.stringify(config), encoding: 'utf8'
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(parse(fs.readFileSync(file, 'utf8')).setup, config);
   } finally { fs.rmSync(dir, {recursive: true, force: true}); }
 });

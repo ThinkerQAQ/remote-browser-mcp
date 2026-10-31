@@ -51,6 +51,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw 'npm ci failed.' }
         Set-Content $marker $dependencyHash -Encoding ASCII
     }
+    Say 'Checking/installing the Windows tunnel client...' '正在检查或安装 Windows 隧道客户端...'
     $client = Install-SetupTunnel
     $existing = Read-SetupConfig $node $InstallRoot
     $previous = if ($existing.PSObject.Properties['setup']) { $existing.setup } else { $null }
@@ -70,6 +71,8 @@ try {
     $changeKey = !(Test-Path $keyFile)
     if (!$changeKey) { $changeKey = (Ask 'Replace saved runtime key? y/N' '是否替换已保存的运行密钥？y/N' 'N') -match '^[yY]' }
     if ($changeKey) {
+        Start-Process 'https://platform.openai.com/api-keys'
+        Say 'Create/select a runtime key whose identity has Tunnels Read + Use access to your tunnel.' '请创建或选择运行密钥，其身份需要拥有该隧道的 Tunnels Read + Use 权限。'
         Say 'Enter the runtime API key below. Input is hidden and saved with Windows user-bound encryption.' '请输入运行 API Key。输入不会回显，保存时使用 Windows 用户绑定加密。'
         $secure = Read-Host 'Runtime API Key' -AsSecureString
         Save-SetupSecret $secure
