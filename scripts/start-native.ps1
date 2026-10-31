@@ -1,6 +1,7 @@
 ﻿[CmdletBinding()]
-param([string]$InstallRoot = (Split-Path $PSScriptRoot -Parent), [switch]$Stop, [switch]$Restart)
+param([string]$InstallRoot = '', [switch]$Stop, [switch]$Restart)
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($InstallRoot)) { $InstallRoot = Split-Path $PSScriptRoot -Parent }
 $OutputEncoding = New-Object Text.UTF8Encoding($false)
 [Console]::OutputEncoding = $OutputEncoding
 $script:StateDir = Join-Path $env:LOCALAPPDATA 'RemoteBrowserMCP\state'

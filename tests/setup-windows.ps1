@@ -80,7 +80,7 @@ class FakeTunnel {
     & (Join-Path $fixture 'scripts\setup.ps1') -InstallRoot $fixture -Language en
     Assert ($LASTEXITCODE -eq 0) 'Resume failed'
     Assert ((Get-Content $env:FAKE_TUNNEL_LOG).Count -eq 1) 'Resume duplicated the runtime connection'
-    & (Join-Path $fixture 'scripts\setup.ps1') -InstallRoot $fixture -CheckOnly
+    & (Join-Path $fixture 'scripts\setup.ps1') -CheckOnly
     Assert ($LASTEXITCODE -eq 0) 'Read-only check failed'
     . (Join-Path $root 'scripts\setup-common.ps1')
     $script:StateDir = $state
@@ -97,6 +97,8 @@ class FakeTunnel {
     try { Get-VerifiedArchive 'https://example.invalid/fixture.zip' ('0' * 64) (Join-Path $temp 'unverified') } catch { $rejected = $true }
     Assert $rejected 'Corrupt download was accepted'
     Assert (!(Test-Path (Join-Path $temp 'unverified'))) 'Unverified archive was extracted'
+    & (Join-Path $fixture 'scripts\start-native.ps1')
+    Assert ($LASTEXITCODE -eq 0) 'Default native launch path failed'
     Write-Host 'PASS: native setup, encrypted credential launch, paths with spaces, resume and truthful checkpoints'
 } finally {
     $env:LOCALAPPDATA = $oldLocal; $env:Path = $oldPath

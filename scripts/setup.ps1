@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
-param([string]$InstallRoot = (Split-Path $PSScriptRoot -Parent), [ValidateSet('en','zh-CN')][string]$Language,
+param([string]$InstallRoot = '', [ValidateSet('en','zh-CN')][string]$Language,
       [switch]$CheckOnly)
 $ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($InstallRoot)) { $InstallRoot = Split-Path $PSScriptRoot -Parent }
 $OutputEncoding = New-Object Text.UTF8Encoding($false)
 [Console]::OutputEncoding = $OutputEncoding
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
