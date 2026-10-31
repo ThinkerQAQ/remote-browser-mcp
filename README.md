@@ -51,4 +51,4 @@ Skill loading does not prove MCP tool discovery. Register and test the MCP conne
 - The safe default does **not** operate existing user tabs. Explicit opt-in is required for that mode.
 - Local browser access is sensitive; inspect [SECURITY.md](SECURITY.md) before enabling a remote plugin.
 
-Built on [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) and the [Model Context Protocol SDK](https://github.com/modelcontextprotocol/typescript-sdk). Licensed under Apache-2.0.
+Built on [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) and the [Model Context Protocol SDK](https://github.com/modelcontextprotocol/typescript-sdk). Original integration code is licensed under [Apache-2.0](LICENSE); upstream packages retain their own licenses. See [third-party notices](THIRD_PARTY_NOTICES.md) for pinned dependencies and redistribution obligations.
