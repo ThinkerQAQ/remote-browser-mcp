@@ -12,7 +12,7 @@
     "proxy-smoke": "node scripts/proxy-smoke.mjs",
     "interop-smoke": "node scripts/interop-smoke.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check scripts/proxy.mjs && node --check scripts/lib/config.mjs && node --check scripts/lib/policy.mjs && node --check scripts/lib/status.mjs && node --check scripts/lib/discovery.mjs && node --check scripts/runtime-status.mjs && npm test"
+    "check": "node --check scripts/proxy.mjs && node --check scripts/lib/config.mjs && node --check scripts/lib/policy.mjs && node --check scripts/lib/status.mjs && node --check scripts/lib/discovery.mjs && node --check scripts/runtime-status.mjs && node --check scripts/lib/cdp-probe.mjs && npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
