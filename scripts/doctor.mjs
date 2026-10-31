@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import {browserPortFile} from "./lib/config.mjs";
 
 const browserUrl = process.env.CDP_BROWSER_URL || "http://127.0.0.1:9222";
 const base = new URL(browserUrl);
@@ -20,8 +20,7 @@ try {
 } catch (e) { console.log("CDP_HTTP_ERROR=" + e.name); }
 
 let websocketOK = false;
-const appData = process.env.LOCALAPPDATA;
-const portFile = appData && path.join(appData, "Microsoft", "Edge", "User Data", "DevToolsActivePort");
+const portFile = browserPortFile;
 if (portFile && fs.existsSync(portFile)) {
   try {
     const [port, socketPath] = fs.readFileSync(portFile, "utf8").trim().split(/\r?\n/);

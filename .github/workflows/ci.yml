@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         node: ['22', '24']
     runs-on: ${{ matrix.os }}
     steps:
@@ -30,3 +30,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: ./tests/setup-windows.ps1
+      - name: Verify Unix entry syntax and read-only preflight
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          sh -n setup.sh install.sh setup.command
+          sh setup.sh --check

@@ -6,10 +6,10 @@ import {parse} from 'smol-toml';
 
 // Never print full runtime status: it includes private logs/IDs.
 try {
-  const native = process.platform === 'win32';
-  const config = native ? parse(fs.readFileSync('config.toml', 'utf8')) : {};
+  const config = fs.existsSync('config.toml') ? parse(fs.readFileSync('config.toml', 'utf8')) : {};
+  const native = process.platform === 'win32' || config.setup?.native_alias === 'remote-browser-unix';
   const client = native ? config.setup?.tunnel_client_path : path.join(os.homedir(), '.local/bin/tunnel-client');
-  const alias = native ? 'remote-browser-native' : 'remote-browser';
+  const alias = native ? (config.setup?.native_alias || 'remote-browser-native') : 'remote-browser';
   if (!client) throw Error('Setup required');
   const status = JSON.parse(execFileSync(client,
     ['runtimes', 'status', alias, '--json'],
@@ -22,6 +22,6 @@ try {
   console.log(JSON.stringify(summary));
   if (!Object.values(summary).every(Boolean)) process.exitCode = 2;
 } catch {
-  console.error('Runtime status unavailable. Run setup.cmd on Windows, or check tunnel-client in WSL; inspect private local logs.');
+  console.error('Runtime status unavailable. Run setup.cmd (Windows) or setup.sh (Linux/macOS), or check legacy WSL tunnel-client; inspect private local logs.');
   process.exitCode = 2;
 }

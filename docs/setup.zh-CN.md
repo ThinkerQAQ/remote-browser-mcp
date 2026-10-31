@@ -2,6 +2,8 @@
 
 [English](setup.md) · [中文首页](../README_ZH.md)
 
+Linux 和 macOS 用户请使用[原生 Unix 配置指南](setup-unix.zh-CN.md)。
+
 ## 如何开始
 
 下载仓库的[源码 ZIP](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip)，解压到准备长期使用的目录，双击 **`setup.cmd`**。不要直接在压缩包查看器中运行，安装后不要移动或删除该目录。

@@ -1,19 +1,21 @@
 import fs from "node:fs";
 import path from "node:path";
 import {parse} from "smol-toml";
+import {browserPortPath} from "./browser-profile.mjs";
 const file=path.resolve(process.env.REMOTE_BROWSER_CONFIG||"config.toml");
 const example=path.resolve("config.example.toml");
 const config=parse(fs.readFileSync(fs.existsSync(file)?file:example,"utf8"));
 const url=new URL(process.env.CDP_BROWSER_URL||config.browser?.endpoint||"http://127.0.0.1:9222");
 if(url.protocol!=="http:"||!["127.0.0.1","localhost"].includes(url.hostname)||url.port!=="9222")
-  throw new Error("Only local Edge CDP at port 9222 is supported");
+  throw new Error("Only local browser CDP at port 9222 is supported");
+export const browserPortFile=browserPortPath({browser:config.browser?.name||"edge",userDataDir:process.env.REMOTE_BROWSER_PROFILE_DIR||config.browser?.user_data_dir});
 export const settings={
   allowExisting:config.security?.allow_existing_pages===true,
   allowJS:config.security?.allow_javascript===true
 };
 export function upstreamOptions(){
   let endpoint="--browser-url="+url.toString();
-  const file=process.env.LOCALAPPDATA&&path.join(process.env.LOCALAPPDATA,"Microsoft","Edge","User Data","DevToolsActivePort");
+  const file=browserPortFile;
   if(file&&fs.existsSync(file)){
     const [port,wsPath]=fs.readFileSync(file,"utf8").trim().split(/\r?\n/);
     if(port===url.port&&/^\/devtools\/browser\/[a-zA-Z0-9-]+$/.test(wsPath||""))
