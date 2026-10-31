@@ -2,7 +2,7 @@
 
 [English](README.md) · [安全说明](SECURITY.md) · [参与贡献](CONTRIBUTING.md) · [阶段一](docs/phase1.zh-CN.md) · [阶段二](docs/phase2.zh-CN.md)
 
-通过 Chrome DevTools MCP 和可选的 OpenAI 持久隧道，让 AI 连接**已经运行的 Microsoft Edge**。复用当前浏览器登录态，同时默认保护已有用户标签页。主要面向 Windows + WSL2，不另起无头浏览器。
+通过 Chrome DevTools MCP 和可选的 OpenAI 持久隧道，让 AI 连接**已经运行的 Microsoft Edge**。复用当前浏览器登录态，同时默认保护已有用户标签页。主要面向 Windows（原生一键配置，同时兼容旧 WSL2 方案），不另起无头浏览器。
 
 > **实验性项目：** MCP 隧道显示健康，不等于 Edge 的 CDP WebSocket 可用。实际网站可能抢焦点，不能承诺绝对无干扰。
 
@@ -16,7 +16,11 @@
 - `browser_status` 只读检测 CDP 是否可用，不输出网页标题、URL 或登录凭据。
 - TOML 示例配置，私有 `config.toml` 不参与 Git 提交。
 
-## 快速开始（Windows PowerShell）
+## 一键配置（推荐）
+
+下载[源码 ZIP](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip)，解压后双击 **`setup.cmd`**。中英文 Windows 向导负责安装依赖、加密保存凭据、启动服务和引导 ChatGPT 注册，**新安装不需要 WSL**。账号登录和浏览器授权仍由本人完成。详见[安装、续配和自启说明](docs/setup.zh-CN.md)。
+
+## 手动启动（Windows PowerShell）
 
 需要 Node.js 22+；在已有 Edge 的 `edge://inspect` 中开启远程调试。
 

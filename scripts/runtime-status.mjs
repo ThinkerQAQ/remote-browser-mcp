@@ -1,12 +1,18 @@
 import {execFileSync} from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import fs from 'node:fs';
+import {parse} from 'smol-toml';
 
-// Run in WSL. Never print the full runtime status: it includes private logs/IDs.
+// Never print full runtime status: it includes private logs/IDs.
 try {
-  const client = path.join(os.homedir(), '.local/bin/tunnel-client');
+  const native = process.platform === 'win32';
+  const config = native ? parse(fs.readFileSync('config.toml', 'utf8')) : {};
+  const client = native ? config.setup?.tunnel_client_path : path.join(os.homedir(), '.local/bin/tunnel-client');
+  const alias = native ? 'remote-browser-native' : 'remote-browser';
+  if (!client) throw Error('Setup required');
   const status = JSON.parse(execFileSync(client,
-    ['runtimes', 'status', 'remote-browser', '--json'],
+    ['runtimes', 'status', alias, '--json'],
     {encoding: 'utf8', timeout: 15000, stdio: ['ignore', 'pipe', 'pipe']}));
   const summary = {
     process_running: status.process_running === true,
@@ -16,6 +22,6 @@ try {
   console.log(JSON.stringify(summary));
   if (!Object.values(summary).every(Boolean)) process.exitCode = 2;
 } catch {
-  console.error('Runtime status unavailable. Run in WSL with tunnel-client installed; inspect private local logs.');
+  console.error('Runtime status unavailable. Run setup.cmd on Windows, or check tunnel-client in WSL; inspect private local logs.');
   process.exitCode = 2;
 }

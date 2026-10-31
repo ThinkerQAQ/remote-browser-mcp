@@ -2,6 +2,9 @@
 
 [English](phase2.md) · [中文首页](../README_ZH.md)
 
+Windows 新用户优先使用[一键配置向导](setup.zh-CN.md)，下文 WSL 命令继续用于既有部署。
+
+
 ## Windows 本地测试
 
 在 PowerShell 执行 `npm ci`、`npm run doctor`、`npm run proxy-smoke`。测试仅新建 `about:blank` 标签页，验证权限、读取快照并清理测试标签页。`npm run mcp` 启动带保护的 MCP stdio 服务。

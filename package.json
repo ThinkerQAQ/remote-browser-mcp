@@ -1,18 +1,19 @@
 {
   "name": "remote-browser-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Safe MCP proxy for a running Microsoft Edge: background tabs and WSL interop",
   "type": "module",
   "scripts": {
     "doctor": "node scripts/doctor.mjs",
     "tunnel-status": "node scripts/runtime-status.mjs",
+    "setup:check": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/setup.ps1 -CheckOnly",
     "smoke": "node scripts/smoke.mjs",
     "mcp": "node scripts/proxy.mjs",
     "proxy-smoke": "node scripts/proxy-smoke.mjs",
     "interop-smoke": "node scripts/interop-smoke.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check scripts/proxy.mjs && node --check scripts/lib/config.mjs && node --check scripts/lib/policy.mjs && node --check scripts/lib/status.mjs && node --check scripts/lib/discovery.mjs && node --check scripts/runtime-status.mjs && node --check scripts/lib/cdp-probe.mjs && npm test"
+    "check": "node --check scripts/proxy.mjs && node --check scripts/lib/config.mjs && node --check scripts/lib/policy.mjs && node --check scripts/lib/status.mjs && node --check scripts/lib/discovery.mjs && node --check scripts/runtime-status.mjs && node --check scripts/lib/cdp-probe.mjs && node --check scripts/setup-config.mjs && node --check scripts/lib/setup-health.mjs && node --check scripts/lib/setup-config.mjs && node --check scripts/launch.mjs && npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",

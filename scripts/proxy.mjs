@@ -7,6 +7,7 @@ import {settings,upstreamOptions} from "./lib/config.mjs";
 import {allowedTools,enforceOwnedPage,hideExistingPages} from "./lib/policy.mjs";
 import {browserStatus} from "./lib/status.mjs";
 import {discoverTools} from "./lib/discovery.mjs";
+import {recordSetupHealth,writeSetupHealth} from "./lib/setup-health.mjs";
 
 let upstream=null, visibleTools=[], selectedOwned=false, selectedPageId=null;
 const owned=new Set();
@@ -17,7 +18,7 @@ const pageIds=s=>[...s.matchAll(/^\s*(\d+):/gm)].map(m=>+m[1]);
 async function attach(){
   if(upstream)return;
   const transport=new StdioClientTransport({...upstreamOptions(),stderr:"pipe"});
-  const client=new Client({name:"remote-browser-proxy",version:"0.2.0"});
+  const client=new Client({name:"remote-browser-proxy",version:"0.3.0"});
   try{
     await client.connect(transport,{timeout:5000});
     const listing=await client.listTools({}, {timeout:5000});
@@ -32,7 +33,7 @@ async function reset(){
   if(old)await old.close().catch(()=>{});
   await attach();
 }
-const server=new Server({name:"remote-browser-mcp",version:"0.2.0"},{
+const server=new Server({name:"remote-browser-mcp",version:"0.3.0"},{
   capabilities:{tools:{}},
   instructions:"Use new_page to open a dedicated background tab. Never activate existing tabs."
 });
@@ -43,6 +44,7 @@ server.setRequestHandler(ListToolsRequestSchema,()=>discoverTools(
 async function call(name,params){
   if(name==="browser_status") {
     const health=await browserStatus();
+    try{writeSetupHealth({phase:"finished",cdp_ready:health.cdp_ready===true});}catch{}
     return {content:[{type:"text",text:JSON.stringify({
       ...health,existing_tabs_protected:!settings.allowExisting,
       new_pages_background:true,arbitrary_javascript_enabled:settings.allowJS
@@ -90,3 +92,6 @@ server.setRequestHandler(CallToolRequestSchema,async req=>{
   return work;
 });
 await server.connect(new StdioServerTransport());
+
+// Does not delay MCP initialization or create a second browser connection.
+recordSetupHealth(browserStatus).catch(()=>console.error("Setup health checkpoint unavailable"));

@@ -2,7 +2,7 @@
 
 [简体中文](README_ZH.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Phase 1](docs/phase1.md) · [Phase 2](docs/phase2.md)
 
-Connect an AI assistant to your **already-running Microsoft Edge** via Chrome DevTools MCP and an optional persistent OpenAI tunnel. Reuse existing login sessions while protecting the user's original tabs. Designed for Windows + WSL2, with no custom browser build or headless replacement.
+Connect an AI assistant to your **already-running Microsoft Edge** via Chrome DevTools MCP and an optional persistent OpenAI tunnel. Reuse existing login sessions while protecting the user's original tabs. Designed for Windows (native one-entry setup, with legacy WSL2 support), with no custom browser build or headless replacement.
 
 > **Experimental:** The tunnel and MCP runtime can be healthy while the browser's CDP WebSocket is unavailable. Check browser health separately; no guarantee of zero focus changes on arbitrary websites.
 
@@ -16,7 +16,11 @@ Connect an AI assistant to your **already-running Microsoft Edge** via Chrome De
 - Read-only `browser_status` reports CDP readiness without revealing URLs, page titles, or credentials.
 - Configuration uses `config.example.toml`; private overrides in `config.toml` are gitignored.
 
-## Quick start (Windows PowerShell)
+## One-entry setup (recommended)
+
+Download the [source ZIP](https://github.com/ThinkerQAQ/remote-browser-mcp/archive/refs/heads/main.zip), extract it and double-click **`setup.cmd`**. The bilingual Windows wizard installs dependencies, saves encrypted credentials, starts the runtime and guides ChatGPT registration. **New installations do not need WSL.** Account login and browser consent remain explicit user steps. See [setup, resume and startup](docs/setup.md).
+
+## Manual start (Windows PowerShell)
 
 Requires Node.js 22+ and Edge with remote debugging enabled in `edge://inspect`.
 
