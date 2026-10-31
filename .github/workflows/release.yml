@@ -51,10 +51,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          prefix="remote-browser-mcp-${GITHUB_REF_NAME}/"
-          git archive --format=zip --prefix="$prefix" HEAD > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip"
-          git archive --format=tar --prefix="$prefix" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-linux.tar.gz"
-          git archive --format=tar --prefix="$prefix" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz"
+          prefix="remote-browser-mcp-${GITHUB_REF_NAME}"
+          git archive --format=zip --prefix="$prefix/" HEAD > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip"
+          git archive --format=tar --prefix="$prefix/" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-linux.tar.gz"
+          git archive --format=tar --prefix="$prefix/" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz"
           (
             cd dist
             sha256sum *.zip *.tar.gz > SHA256SUMS
