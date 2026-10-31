@@ -2,6 +2,9 @@
 
 [简体中文](phase2.zh-CN.md) · [README](../README.md)
 
+New Windows users should start with the [one-entry setup wizard](setup.md). The WSL commands below remain available for existing deployments.
+
+
 ## Local test (Windows)
 
 Run `npm ci`, `npm run doctor`, then `npm run proxy-smoke` in PowerShell. The smoke test opens only `about:blank`, verifies protected tools, takes a snapshot and closes that test tab. `npm run mcp` starts the protected MCP stdio server.

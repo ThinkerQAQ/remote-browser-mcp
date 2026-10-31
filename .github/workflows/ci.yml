@@ -26,3 +26,7 @@ jobs:
         run: npm run check
       - name: Validate sample TOML
         run: node -e "import('./scripts/lib/config.mjs').then(x => {if(x.settings.allowExisting || x.settings.allowJS) process.exit(1)})"
+      - name: Verify Windows one-click setup offline
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: ./tests/setup-windows.ps1
