@@ -45,7 +45,8 @@ jobs:
           node -e 'if ("v"+require("./package.json").version !== process.env.GITHUB_REF_NAME) process.exit(1)'
           test -f LICENSE
           test -f THIRD_PARTY_NOTICES.md
-          test -f docs/release-v0.3.0.md
+          test -f README.md
+          test -f README_ZH.md
       - name: Build three platform archives
         shell: bash
         run: |
@@ -73,4 +74,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Remote Browser MCP $GITHUB_REF_NAME — Windows, Linux and macOS" --notes-file docs/release-v0.3.0.md
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "Remote Browser MCP $GITHUB_REF_NAME — Windows, Linux and macOS" --generate-notes
