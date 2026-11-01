@@ -1,70 +1,112 @@
 # Remote Browser MCP
 
-[简体中文](README_ZH.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Phase 1](docs/phase1.md) · [Phase 2](docs/phase2.md)
+[简体中文](README_ZH.md)
 
-Connect an AI assistant to your **already-running Microsoft Edge or Google Chrome** via Chrome DevTools MCP and an optional persistent OpenAI tunnel. Reuse existing login sessions while protecting the user's original tabs. Supports native Windows, Linux and macOS setup, with legacy WSL2 support, with no custom browser build or headless replacement.
+## Introduction
 
-> **Experimental:** The tunnel and MCP runtime can be healthy while the browser's CDP WebSocket is unavailable. Check browser health separately; no guarantee of zero focus changes on arbitrary websites.
+An MCP server for operating your own Edge/Chrome debugging session through a guarded Chrome DevTools MCP proxy. It opens dedicated background tabs, protects existing user tabs by default, and provides browser health diagnostics. Use it with a local stdio client; an OpenAI tunnel is optional for remote ChatGPT access.
 
-## Features
+## Quick Start
 
-- Connects to an existing Edge/Chrome CDP session on loopback port 9222; tries the `DevToolsActivePort` WebSocket when `/json/version` is unavailable.
-- Supports a persistent MCP process via `tunnel-client`, without creating a new browser for each request.
-- Legacy WSL tunnel auto-recovery via an optional systemd user service; reuses the original tunnel and never restarts Edge.
-- Forces `new_page` into the background and prevents `select_page` from bringing windows forward.
-- Protects pre-existing user tabs by default; new dedicated tabs share the browser profile's authentication.
-- Explicit tool allowlist: no raw network inspection, file upload, heap snapshots, arbitrary JavaScript or newly introduced upstream tools by default.
-- Read-only `browser_status` reports CDP readiness without revealing URLs, page titles, or credentials.
-- Configuration uses `config.example.toml`; private overrides in `config.toml` are gitignored.
+### 1. Prerequisites
 
-## One-entry setup (recommended)
+Node.js **22+**, npm, Git, and a graphical Edge or Chrome session on Windows, Linux or macOS. Windows setup targets Edge. Browser access requires your explicit debugging consent. A headless SSH machine does not automatically provide a desktop browser.
 
-**Windows:** `setup.cmd` · **Linux:** `sh setup.sh` · **macOS:** `setup.command` or `sh setup.sh`. See the [Linux/macOS guide](docs/setup-unix.md) or [Windows guide](docs/setup.md).
-
-Download the [v0.3.0 release](https://github.com/ThinkerQAQ/remote-browser-mcp/releases/tag/v0.3.0) for your platform and verify SHA-256 using `SHA256SUMS`, then run its setup entry. Or use the version-pinned bootstrap commands below. No Git clone is required. The bilingual wizard installs project dependencies, saves credentials securely, starts the runtime and guides ChatGPT registration. Account login and browser consent remain explicit user steps.
-
-### Version-pinned bootstrap
-
-Linux or macOS:
+### 2. Install and enable debugging
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/ThinkerQAQ/remote-browser-mcp/v0.3.0/install.sh | sh
-```
-
-Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/ThinkerQAQ/remote-browser-mcp/v0.3.0/install.ps1 | iex
-```
-
-The bootstrap verifies the downloaded release archive against the accompanying `SHA256SUMS`. Node.js and npm dependencies are installed by the setup wizard; your own tunnel credentials and ChatGPT registration still require explicit user action. Do not publish your private tunnel ID or keys.
-
-## Manual start (Windows PowerShell)
-
-Requires Node.js 22+ and Edge with remote debugging enabled in `edge://inspect`.
-
-```powershell
+git clone https://github.com/ThinkerQAQ/remote-browser-mcp.git
+cd remote-browser-mcp
 npm ci
 npm run check
-npm run doctor
-npm run proxy-smoke
-npm run mcp
 ```
 
-`npm run proxy-smoke` opens **only an about:blank test tab**, verifies protections and closes that test tab. `npm run mcp` runs the guarded local MCP server over stdio. It does **not** create a remote plugin or publish a public CDP endpoint.
+In Edge, open `edge://inspect` and enable remote debugging for the intended browser instance. Approve the browser's consent prompt when it appears. The default endpoint is `http://127.0.0.1:9222`.
 
-## Remote access from ChatGPT
+If the browser does not provide that switch, close only an existing *dedicated test profile* and launch a separate profile explicitly. For example, on Linux with Google Chrome installed:
 
-Use [the phase-two guide](docs/phase2.md) to connect your own dedicated OpenAI tunnel through the managed local runtime and create a **private ChatGPT plugin** using the tunnel ID. Keep all identifiers, keys, browser profiles, and user-specific plugin manifests out of this repository. Tunnel readiness does not guarantee the Edge CDP WebSocket is working; call `browser_status` first.
+```sh
+google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.local/share/remote-browser-mcp-profile"
+```
 
-Skill loading does not prove MCP tool discovery. Register and test the MCP connection separately from skill packaging. Imported MCP bundles may be Desktop only; see [registration and troubleshooting](docs/phase2.md#chatgpt-registration-and-acceptance). If upstream discovery fails, only `browser_status` is advertised; refresh the connection after recovery.
+On Windows/macOS use your browser executable with the same two flags and a permanent, separate profile path. Modern Chrome may reject debugging in its default profile. Do not expose port 9222 to the network.
 
-## Limitations
+### 3. Configure and verify locally
 
-- Connects to configured Edge/Chrome debugging sessions. Unix setup can explicitly launch a dedicated automation profile; it never silently restarts user windows.
-- Background mode is best effort; real websites can open native dialogs and alter focus.
-- Persistent tunnel, browser CDP and ChatGPT plugin are distinct layers with separate health states and authorization requirements.
-- The safe default does **not** operate existing user tabs. Explicit opt-in is required for that mode.
-- Local browser access is sensitive; inspect [SECURITY.md](SECURITY.md) before enabling a remote plugin.
+No config file is required for Edge at the default endpoint. For Chrome or another loopback hostname create `config.toml` in the checkout:
 
-Built on [Chrome DevTools MCP](https://github.com/ChromeDevTools/chrome-devtools-mcp) and the [Model Context Protocol SDK](https://github.com/modelcontextprotocol/typescript-sdk). Original integration code is licensed under [Apache-2.0](LICENSE); upstream packages retain their own licenses. See [third-party notices](THIRD_PARTY_NOTICES.md) for pinned dependencies and redistribution obligations.
+```toml
+[browser]
+name = "chrome"
+endpoint = "http://127.0.0.1:9222"
+
+[security]
+allow_existing_pages = false
+allow_javascript = false
+```
+
+```sh
+npm run doctor
+npm run proxy-smoke
+```
+
+Success means CDP is ready and the smoke test creates an `about:blank` tab, reads its snapshot and closes **that test tab** with exit code 0. Existing tabs must stay protected. This is a real browser test; offline unit tests alone do not establish browser readiness.
+
+### 4. Connect an MCP client and use it
+
+Add a local stdio server to your client's MCP settings, replacing the path. On Windows use forward slashes, for example `C:/tools/remote-browser-mcp/scripts/launch.mjs`.
+
+```json
+{
+  "mcpServers": {
+    "browser": {
+      "command": "node",
+      "args": ["/absolute/path/remote-browser-mcp/scripts/launch.mjs"]
+    }
+  }
+}
+```
+
+Reconnect the client. Call `browser_status` first; require `cdp_ready=true`. Then ask it to open a new `about:blank` tab, take a snapshot and close that tab. This completes client → proxy → browser acceptance. The client launches the server; `npm run mcp` is the equivalent manual stdio entry for debugging.
+
+### 5. Troubleshooting
+
+- **CDP not ready:** check the configured endpoint, browser process, dedicated profile and consent dialog. Tunnel readiness does not establish CDP readiness.
+- **Only `browser_status` appears:** upstream discovery failed. Repair dependencies/browser access, reconnect, refresh tools and request the tool list again.
+- **Repeated consent:** a new proxy or browser process may require approval. The status probe reuses its connection within a process, but cannot bypass browser or client consent.
+- **Existing page rejected:** expected with the default policy. Create a new dedicated page instead.
+- **GUI client cannot find Node:** use its absolute executable path.
+
+## Configuration
+
+[config.example.toml](config.example.toml) is the maintained template. Optional local overrides live in gitignored `config.toml`. `[browser].name` defaults to `edge`; `endpoint` defaults to loopback port 9222. Only loopback port 9222 is accepted. `scripts/launch.mjs` sets the working directory before loading the proxy, so MCP clients need no custom cwd. Both `[security].allow_existing_pages` and `allow_javascript` default to `false`; enabling either grants broader access.
+
+Setup saves non-secret selections under `[setup]`. Runtime secrets are stored outside Git: Windows DPAPI, macOS Keychain, or Linux Secret Service. Linux without an available secret store uses passphrase-encrypted storage and requires manual unlock; unattended startup is disabled in that mode.
+
+## Optional Features
+
+### Guided remote ChatGPT connection
+
+For remote use you need your own tunnel/workspace authorization and runtime key in addition to the browser. Download a platform archive from [Releases](https://github.com/ThinkerQAQ/remote-browser-mcp/releases/latest), extract to a permanent folder, and run `setup.cmd` on Windows or `sh setup.sh` on Linux/macOS (`setup.command` is the macOS double-click entry). The same entries work from this checkout.
+
+The wizard installs supported Node/npm and official tunnel-client dependencies, guides browser configuration, securely stores the key, starts the runtime and prints registration steps. Unix bootstrap needs curl, tar, awk, unzip and a SHA-256 utility. It requires a GUI session for browser use; Windows does not require WSL.
+
+In ChatGPT, complete **Add custom MCP server → Tunnel** with your own tunnel when your account supports it. Enable the connection, refresh tools, start a new chat and call `browser_status`, then perform the blank-tab workflow above. A packaged skill or healthy tunnel is not proof of tool discovery or a successful call.
+
+Use `npm run tunnel-status` for runtime status. On Unix, `sh setup.sh --check`, `--start`, and `--stop` check/manage the runtime. On Windows use `scripts/start-native.ps1` (add `-Stop` to stop). Optional login startup depends on the native user session, credential store and browser consent. Stop an older deployment before reusing its tunnel; one tunnel must not have competing runtimes.
+
+For existing WSL deployments only, `scripts/setup-wsl-service.sh install|status|remove` manages the legacy user supervisor after tunnel configuration. It does not start Edge or prove browser readiness.
+
+## Development
+
+```sh
+npm ci
+npm run check
+npm run proxy-smoke
+```
+
+`check` includes unit/security-policy tests; `proxy-smoke` requires a real debugging browser. CI runs offline tests and setup fixtures on Windows, Linux and macOS with Node 22/24, including native Windows setup and macOS isolated-Keychain tests. Interactive account registration, website login, native dialogs, focus behavior on arbitrary sites and reboot persistence need separate real-environment verification. Background operation is best effort. Use feature branches, PRs and Squash Merge.
+
+## License
+
+Original integration code is [Apache-2.0](LICENSE); Chrome DevTools MCP and the MCP SDK retain their own licenses. See [third-party notices](THIRD_PARTY_NOTICES.md) and [security policy](SECURITY.md). Debugging grants access to the selected browser profile's authenticated pages. Requests/results may reach the connected AI provider. Keep credentials, browser profiles, runtime state and user-specific plugin manifests private. The license does not grant rights to website content or bypass site permissions.
