@@ -21,6 +21,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/term"
@@ -32,13 +33,15 @@ var assets embed.FS
 var tunnelIDPattern = regexp.MustCompile(`^tunnel_[A-Za-z0-9_-]+$`)
 
 type state struct {
-	ID        string `json:"id"`
-	HasKey    bool   `json:"has_key"`
-	Managed   bool   `json:"managed_process_running"`
-	Ready     bool   `json:"tunnel_ready"`
-	Manager   string `json:"manager"`
-	Autostart *bool  `json:"autostart_enabled"`
-	Error     string `json:"error,omitempty"`
+	Revision        string `json:"revision"`
+	RestartRequired bool   `json:"restart_required"`
+	ID              string `json:"id"`
+	HasKey          bool   `json:"has_key"`
+	Managed         bool   `json:"managed_process_running"`
+	Ready           bool   `json:"tunnel_ready"`
+	Manager         string `json:"manager"`
+	Autostart       *bool  `json:"autostart_enabled"`
+	Error           string `json:"error,omitempty"`
 }
 type setupState struct {
 	ID      string `json:"id"`
@@ -121,8 +124,29 @@ func readState(root string) state {
 	return nativeState(root)
 }
 func service(root, action string) error {
-	if action != "start" && action != "stop" {
+	if action != "start" && action != "stop" && action != "restart" {
 		return errors.New("invalid service action")
+	}
+	if action != "stop" {
+		if err := validateSavedConnection(root); err != nil {
+			return err
+		}
+	}
+	if action == "restart" {
+		if !nativeState(root).Managed {
+			return errors.New("start the service before restarting it")
+		}
+		if err := controlNative(root, "stop"); err != nil {
+			return err
+		}
+		deadline := time.Now().Add(10 * time.Second)
+		for localControl(root, "status") {
+			if time.Now().After(deadline) {
+				return errors.New("service has not stopped; restart cancelled")
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		return controlNative(root, "start")
 	}
 	return controlNative(root, action)
 }
@@ -165,7 +189,7 @@ func webGUI(root string) error {
 		b, _ := assets.ReadFile("ui/index.html")
 		_, _ = w.Write(b)
 	})
-	for _, file := range []string{"app.js", "style.css"} {
+	for _, file := range []string{"app.js", "state.js", "style.css"} {
 		name := file
 		mux.HandleFunc("GET /"+name, func(w http.ResponseWriter, r *http.Request) {
 			if !authorized(w, r) {
@@ -189,6 +213,7 @@ func webGUI(root string) error {
 		w.Header().Set("Cache-Control", "no-store")
 		_ = json.NewEncoder(w).Encode(readState(root))
 	})
+	var actionLock sync.Mutex
 	mux.HandleFunc("POST /api/action", func(w http.ResponseWriter, r *http.Request) {
 		if !authorized(w, r) {
 			return
@@ -208,11 +233,18 @@ func webGUI(root string) error {
 			http.Error(w, "Invalid request", 400)
 			return
 		}
+		if !actionLock.TryLock() {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "Another operation is in progress"})
+			return
+		}
+		defer actionLock.Unlock()
 		var e error
 		switch request.Action {
 		case "save":
 			e = save(root, strings.TrimSpace(request.ID), request.Key)
-		case "start", "stop":
+		case "start", "stop", "restart":
 			e = service(root, request.Action)
 		default:
 			e = errors.New("unknown action")
@@ -349,7 +381,7 @@ func main() {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(b)
-	case "start", "stop":
+	case "start", "stop", "restart":
 		if e = service(root, action); e != nil {
 			log.Fatal(e)
 		}
@@ -398,7 +430,7 @@ func main() {
 		}
 		fmt.Println("Configuration saved; service state unchanged")
 	default:
-		fmt.Fprintln(os.Stderr, "Usage: remotebrowsermcp [gui|configure|start|stop|status|service]")
+		fmt.Fprintln(os.Stderr, "Usage: remotebrowsermcp [gui|configure|start|stop|restart|status|service]")
 		os.Exit(2)
 	}
 }

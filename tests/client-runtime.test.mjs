@@ -15,7 +15,7 @@ test('Go-compatible worker authenticates control, owns its label and passes key 
  const secret='synthetic-runtime-key';
  const fake=path.join(root,'fake.mjs');
  fs.writeFileSync(fake, `if(process.env.OPENAI_API_KEY!==${JSON.stringify(secret)}) process.exit(2); setInterval(()=>{},1000);`);
- fs.writeFileSync(path.join(root,'runtime/setup.json'),JSON.stringify({tunnel:process.execPath,tunnelArgs:[fake]}));
+ fs.writeFileSync(path.join(root,'runtime/setup.json'),JSON.stringify({tunnel:process.execPath,tunnelArgs:[fake],revision:"saved-before-start"}));
  fs.writeFileSync(path.join(root,'runtime/credentials.json'),JSON.stringify({apiKey:secret}),{mode:0o600});
  const worker=spawn(process.execPath,[path.join(root,'scripts/runtime.mjs'),'run'],{cwd:root,stdio:['ignore','pipe','pipe']});
  const exited=once(worker,'exit'); let output=''; worker.stdout.on('data',b=>output+=b); worker.stderr.on('data',b=>output+=b);
@@ -33,7 +33,11 @@ test('Go-compatible worker authenticates control, owns its label and passes key 
   const headers={Authorization:'Bearer '+control.token};
   const response=await fetch(url+'/status',{headers});
   assert.equal(response.status,200);
-  assert.equal((await response.json()).label,'remote-browser-mcp-'+crypto.createHash('sha256').update(root).digest('hex').slice(0,10));
+  const running=await response.json();
+  assert.equal(running.label,'remote-browser-mcp-'+crypto.createHash('sha256').update(root).digest('hex').slice(0,10));
+  assert.equal(running.revision,'saved-before-start');
+  fs.writeFileSync(path.join(root,'runtime/setup.json'),JSON.stringify({revision:'saved-after-start'}));
+  assert.equal((await (await fetch(url+'/status',{headers})).json()).revision,'saved-before-start');
   assert.equal((await fetch(url+'/stop',{method:'POST',headers})).status,200);
   const [code]=await exited; assert.equal(code,0);
   assert.ok(!output.includes(secret));

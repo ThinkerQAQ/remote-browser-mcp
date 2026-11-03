@@ -22,7 +22,7 @@ async function run() {
   };
   const server = http.createServer((req, res) => {
     if (req.headers.authorization !== `Bearer ${token}` || !((req.url === '/status' && req.method === 'GET') || (req.url === '/stop' && req.method === 'POST'))) { res.writeHead(403); res.end(); return; }
-    res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ label }));
+    res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ label, revision: s.revision || "" }));
     if (req.url === '/stop') terminate();
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });

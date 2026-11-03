@@ -38,7 +38,7 @@ func TestSessionToken(t *testing.T) {
 	}
 }
 func TestRejectUnknownServiceAction(t *testing.T) {
-	if err := service(t.TempDir(), "restart"); err == nil {
+	if err := service(t.TempDir(), "unknown"); err == nil {
 		t.Fatal("unsupported action accepted")
 	}
 }

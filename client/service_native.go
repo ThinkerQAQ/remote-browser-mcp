@@ -24,14 +24,20 @@ type controlData struct {
 	Token string `json:"token"`
 }
 
-func localControl(root, action string) bool {
+type workerStatus struct {
+	Label    string `json:"label"`
+	Revision string `json:"revision"`
+}
+
+func localWorkerStatus(root, action string) (workerStatus, bool) {
+	var result workerStatus
 	b, e := os.ReadFile(filepath.Join(root, "runtime", "control.json"))
 	if e != nil {
-		return false
+		return result, false
 	}
 	var c controlData
 	if json.Unmarshal(b, &c) != nil || c.Port < 1024 || c.Port > 65535 || len(c.Token) < 32 {
-		return false
+		return result, false
 	}
 	method := "GET"
 	if action == "stop" {
@@ -39,20 +45,24 @@ func localControl(root, action string) bool {
 	}
 	req, e := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d/%s", c.Port, action), nil)
 	if e != nil {
-		return false
+		return result, false
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Token)
 	client := &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, e := client.Do(req)
 	if e != nil {
-		return false
+		return result, false
 	}
 	defer response.Body.Close()
 	if response.StatusCode != 200 {
-		return false
+		return result, false
 	}
-	var result map[string]any
-	return json.NewDecoder(response.Body).Decode(&result) == nil && fmt.Sprint(result["label"]) == "remote-browser-mcp-"+strings.TrimPrefix(serviceName(root), "RemoteBrowserMCP-")
+	ok := json.NewDecoder(response.Body).Decode(&result) == nil && result.Label == "remote-browser-mcp-"+strings.TrimPrefix(serviceName(root), "RemoteBrowserMCP-")
+	return result, ok
+}
+func localControl(root, action string) bool {
+	_, ok := localWorkerStatus(root, action)
+	return ok
 }
 func tunnelHealth(root string) bool {
 	s, e := readSetup(root)
@@ -367,13 +377,15 @@ func nativeState(root string) state {
 		return out
 	}
 	out.ID = setup.ID
+	out.Revision = setup.Revision
 	out.Manager = setup.Manager
-	if _, e := os.Stat(filepath.Join(root, "runtime", "credentials.json")); e == nil {
-		out.HasKey = true
-	}
+	_, keyErr := savedKey(root)
+	out.HasKey = keyErr == nil
 	if setup.Manager == "go-client" || setup.Manager == "go-service" {
-		out.Managed = localControl(root, "status")
-		out.Ready = out.Managed && tunnelHealth(root)
+		worker, alive := localWorkerStatus(root, "status")
+		out.Managed = alive
+		out.RestartRequired = alive && setup.Revision != worker.Revision
+		out.Ready = alive && !out.RestartRequired && tunnelHealth(root)
 		if setup.Manager == "go-service" {
 			enabled := true
 			out.Autostart = &enabled
@@ -389,7 +401,7 @@ func nativeState(root string) state {
 				return out
 			}
 			out.Managed = status == kservice.StatusRunning
-			out.Ready = out.Managed && tunnelHealth(root)
+			out.Ready = out.Managed && alive && !out.RestartRequired && tunnelHealth(root)
 		}
 		return out
 	}

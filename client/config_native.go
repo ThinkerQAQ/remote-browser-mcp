@@ -15,6 +15,7 @@ import (
 )
 
 type persistedSetup struct {
+	Revision   string   `json:"revision,omitempty"`
 	ID         string   `json:"id"`
 	Tunnel     string   `json:"tunnel"`
 	TunnelArgs []string `json:"tunnelArgs"`
@@ -133,11 +134,28 @@ func writePrivate(path string, content []byte) error {
 	}
 	return protectPrivate(path, false)
 }
+func savedKey(root string) (string, error) {
+	b, e := os.ReadFile(filepath.Join(root, "runtime", "credentials.json"))
+	var saved persistedCredentials
+	if e != nil || json.Unmarshal(b, &saved) != nil || saved.APIKey == "" || strings.ContainsAny(saved.APIKey, "\r\n\x00") || strings.Trim(saved.APIKey, "*") == "" {
+		return "", errors.New("valid saved runtime API key required")
+	}
+	return saved.APIKey, nil
+}
+func validateSavedConnection(root string) error {
+	setup, err := readSetup(root)
+	if err != nil || !tunnelIDPattern.MatchString(setup.ID) {
+		return errors.New("save a valid Tunnel ID first")
+	}
+	_, err = savedKey(root)
+	return err
+}
+
 func saveNative(root, id, key string) error {
 	if !tunnelIDPattern.MatchString(id) {
 		return errors.New("invalid Tunnel ID")
 	}
-	if strings.ContainsAny(key, "\r\n\x00") {
+	if strings.ContainsAny(key, "\r\n\x00") || (key != "" && strings.Trim(key, "*") == "") {
 		return errors.New("API key must be a single line")
 	}
 	runtimeDir := filepath.Join(root, "runtime")
@@ -148,16 +166,12 @@ func saveNative(root, id, key string) error {
 	if setup.Tunnel != "" && setup.Tunnel != tunnel(root) {
 		return errors.New("existing tunnel executable differs; migrate configuration explicitly")
 	}
+	previousKey, _ := savedKey(root)
 	if key == "" {
-		b, e := os.ReadFile(filepath.Join(runtimeDir, "credentials.json"))
-		if e != nil {
+		if previousKey == "" {
 			return errors.New("runtime API key required for new connection")
 		}
-		var saved persistedCredentials
-		if json.Unmarshal(b, &saved) != nil || saved.APIKey == "" {
-			return errors.New("existing API key is invalid")
-		}
-		key = saved.APIKey
+		key = previousKey
 	}
 	if info, e := os.Lstat(filepath.Join(root, "config.toml")); e == nil {
 		if !info.Mode().IsRegular() {
@@ -188,6 +202,11 @@ func saveNative(root, id, key string) error {
 	if config["setup"] != nil {
 		return errors.New("legacy setup detected; stop its runtime and remove the legacy setup section before configuring the Go client")
 	}
+	// Reusing identical credentials must not rewrite files or mark the service stale.
+	if setup.Revision != "" && setup.ID == id && previousKey == key {
+		return nil
+	}
+	setup.Revision = sessionToken()
 	config["tunnel"] = map[string]any{"id": id, "api_key_env": "OPENAI_API_KEY", "health_port": port}
 	encoded, err := toml.Marshal(config)
 	if err != nil {
