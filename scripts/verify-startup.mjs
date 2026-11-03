@@ -11,7 +11,9 @@ import {setTimeout as delay} from 'node:timers/promises';
 
 if(process.platform!=='win32') throw Error('This acceptance checks Windows Task Scheduler; use native platform CI for Unix');
 const source=fileURLToPath(new URL('../',import.meta.url));
-const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),"rb-startup acceptance's ")));
+// Use the native Windows resolver so 8.3 TEMP aliases (RUNNER~1) and Go's
+// EvalSymlinks identify the same installation, including directory casing.
+const root=fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(),"rb-startup acceptance's ")));
 const bin=path.join(root,'bin'); fs.mkdirSync(bin); fs.mkdirSync(path.join(root,'scripts'));
 const client=path.join(bin,'remotebrowsermcp.exe');
 const task='RemoteBrowserMCP-'+crypto.createHash('sha256').update(root).digest('hex').slice(0,10)+'-Login';
@@ -55,6 +57,6 @@ try {
 } finally {
   if(configured) { try{cli('stop');}catch{} }
   try{ps(`$t=Get-ScheduledTask -TaskName '${task}' -ErrorAction SilentlyContinue; if($t){$t | Unregister-ScheduledTask -Confirm:$false}`);}catch{}
-  assert.equal(path.dirname(root),fs.realpathSync(os.tmpdir()));
+  assert.equal(path.dirname(root),fs.realpathSync.native(os.tmpdir()));
   fs.rmSync(root,{recursive:true,force:true});
 }
