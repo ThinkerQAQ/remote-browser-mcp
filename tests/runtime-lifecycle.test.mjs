@@ -15,7 +15,7 @@ for (const auto of [false, undefined]) test(`worker separates local lifecycle an
   fs.mkdirSync(path.join(root,'scripts')); fs.mkdirSync(path.join(root,'runtime'));
   for(const file of ['runtime.mjs','entrypoint.mjs','private-files.mjs']) fs.copyFileSync(new URL('../scripts/'+file,import.meta.url),path.join(root,'scripts',file));
   const marker=path.join(root,'connected');
-  fs.writeFileSync(path.join(root,'stub.mjs'),`import fs from 'node:fs'; fs.writeFileSync(${JSON.stringify(marker)},'connected'); setInterval(()=>{},1000);`);
+  fs.writeFileSync(path.join(root,'stub.mjs'),`import fs from 'node:fs'; if(process.env.OPENAI_API_KEY!=='synthetic-key') process.exit(2); fs.writeFileSync(${JSON.stringify(marker)},'connected'); setInterval(()=>{},1000);`);
   const setup={id:'tunnel_SYNTHETIC',revision:'saved-revision',tunnel:process.execPath,tunnelArgs:[path.join(root,'stub.mjs')],tunnel_auto_connect:auto};
   const setupFile=path.join(root,'runtime/setup.json'); fs.writeFileSync(setupFile,JSON.stringify(setup));
   fs.writeFileSync(path.join(root,'runtime/credentials.json'),JSON.stringify({apiKey:'synthetic-key'}));
@@ -43,7 +43,10 @@ for (const auto of [false, undefined]) test(`worker separates local lifecycle an
   assert.equal((await request('disconnect')).response.status,200);
   status=(await request('status')).data; assert.equal(status.connecting,false); assert.equal(child.exitCode,null);
   assert.equal(fs.readFileSync(setupFile,'utf8'),JSON.stringify(setup),'manual disconnect must not rewrite preferences');
+  fs.writeFileSync(path.join(root,'runtime/credentials.json'),JSON.stringify({apiKey:'replacement-pending-restart'}));
+  fs.unlinkSync(marker);
   assert.equal((await request('connect')).response.status,200);
+  await until(()=>fs.existsSync(marker)); // Saved replacement key applies only after Restart.
   assert.equal((await request('stop')).response.status,200);
   await until(()=>child.exitCode!==null); assert.equal(child.exitCode,0);
 });

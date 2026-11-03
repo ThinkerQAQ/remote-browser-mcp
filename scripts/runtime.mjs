@@ -12,13 +12,12 @@ const dir = path.join(root, 'runtime');
 const state = () => readPrivateJSON(path.join(dir, 'setup.json'));
 export const label = `remote-browser-mcp-${crypto.createHash('sha256').update(root).digest('hex').slice(0, 10)}`;
 async function run() {
-  const s = state();
+  const s = state(), secret = readPrivateJSON(path.join(dir, 'credentials.json'));
   const token = crypto.randomBytes(32).toString('hex');
   let child, stopping = false, connecting = s.tunnel_auto_connect !== false, retry, changing = false;
   const status = () => ({label, revision: s.revision || '', connecting});
   const start = () => {
     if (stopping || !connecting || child) return;
-    const secret = readPrivateJSON(path.join(dir, 'credentials.json'));
     const fd = fs.openSync(path.join(dir, 'tunnel.log'), fs.constants.O_CREAT | fs.constants.O_APPEND | fs.constants.O_WRONLY, 0o600);
     try {
       child = spawn(s.tunnel, [...(s.tunnelArgs || []), 'run', '--config', path.join(dir, 'tunnel.yaml')], {
