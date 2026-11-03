@@ -7,6 +7,8 @@ permissions:
   contents: read
 jobs:
   verify:
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
     name: Verify ${{ matrix.os }} / Node ${{ matrix.node }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -20,20 +22,168 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund
+      - run: npm run audit:high
       - run: npm run check
-      - name: Verify Windows setup offline
+      - run: node scripts/client-smoke.mjs
+      - name: Check native Windows PowerShell syntax
         if: runner.os == 'Windows'
-        shell: powershell
-        run: ./tests/setup-windows.ps1
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $errors = $null
+          foreach ($file in @('scripts/setup.ps1', 'install.ps1')) {
+            [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$file", [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { throw "PowerShell parse failed: $file" }
+          }
       - name: Verify Unix setup syntax
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          sh -n setup.sh install.sh setup.command
+          bash -n setup.sh install.sh
+  native-installer:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            arch: amd64
+            extension: exe
+          - os: ubuntu-24.04
+            target: linux
+            arch: amd64
+            extension: run
+          - os: macos-15
+            target: darwin
+            arch: amd64
+            extension: dmg
+    runs-on: ${{ matrix.os }}
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: client/go.mod
+          cache-dependency-path: client/go.sum
+      - name: Test cross-platform Go client
+        shell: bash
+        run: |
+          cd client
+          go test ./...
+          go vet ./...
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - run: node scripts/client-smoke.mjs
+      - name: Test offline installer security and metadata
+        run: python -m unittest discover -s packaging/tests -v
+      - name: Install Qt Installer Framework builder
+        uses: jurplel/install-qt-action@v4
+        with:
+          no-qt-binaries: 'true'
+          tools: tools_ifw
+      - name: Build fully bundled payload from verified releases
+        run: python packaging/stage_runtime.py --platform ${{ matrix.target }} --arch ${{ matrix.arch }} --output dist/stage
+      - name: Verify headless Go client without a display
+        shell: bash
+        run: |
+          set -e
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            client="dist/stage/bin/remotebrowsermcp.exe"
+          else
+            client="dist/stage/bin/remotebrowsermcp"
+          fi
+          env -u DISPLAY -u WAYLAND_DISPLAY "$client" --self-test
+          env -u DISPLAY -u WAYLAND_DISPLAY "$client" status
+
+      - name: Confirm bundled MCP works without system Node
+        shell: bash
+        run: |
+          if [[ '${{ matrix.target }}' == 'windows' ]]; then
+            dist/stage/bin/node.exe dist/stage/scripts/client-smoke.mjs
+          else
+            dist/stage/bin/node dist/stage/scripts/client-smoke.mjs
+          fi
+      - name: Verify Windows branded native management entrypoints
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($entry in @("dist/stage/bin/RemoteBrowserMCP-Configure.exe", "dist/stage/RemoteBrowserMCP-Maintenance.exe")) {
+            if (!(Test-Path $entry)) { throw "Missing native GUI entrypoint: $entry" }
+            $process = Start-Process -FilePath (Resolve-Path $entry).Path -ArgumentList "--self-test" -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "Native GUI selftest failed ($($process.ExitCode)): $entry" }
+          }
+      - name: Build native offline Qt installer
+        shell: bash
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          python packaging/qt_installer.py \
+            --platform "${{ matrix.target }}" --stage dist/stage \
+            --version "$version" \
+            --output "dist/RemoteBrowserMCP-v${version}-${{ matrix.target }}-${{ matrix.arch }}.${{ matrix.extension }}"
+      - name: Verify Windows installer does not open a console
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "from pathlib import Path; from packaging.windows_gui_template import WINDOWS_GUI, pe_subsystem; files = list(Path('dist').glob('RemoteBrowserMCP-v*-windows-amd64.exe')); assert len(files) == 1, files; assert pe_subsystem(files[0]) == WINDOWS_GUI, 'Windows installer must use GUI subsystem'"
+      - name: Test Windows installer in CLI mode
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist/RemoteBrowserMCP-v*-windows-amd64.exe | Select-Object -First 1).FullName
+          $root = Join-Path $env:RUNNER_TEMP 'rb-headless-windows'
+          # Qt GUI-subsystem bootstrapper can launch a child process. Wait for
+          # the whole installer process tree before validating the installation.
+          $process = Start-Process -FilePath $installer -ArgumentList @('--root', $root, '--accept-licenses', '--default-answer', '--confirm-command', 'install') -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Windows CLI installer failed ($($process.ExitCode))" }
+          if (!(Test-Path (Join-Path $root 'bin/remotebrowsermcp.exe'))) { throw 'Windows CLI install did not produce the bundled client' }
+          & (Join-Path $root 'bin/remotebrowsermcp.exe') --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Windows CLI client missing' }
+      - name: Test macOS DMG installation over CLI without a login GUI
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=$(find dist -maxdepth 1 -name 'RemoteBrowserMCP-v*-darwin-amd64.dmg' -print -quit)
+          mountpoint="$RUNNER_TEMP/rb-dmg"
+          mkdir -p "$mountpoint"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mountpoint" "$dmg"
+          trap 'hdiutil detach "$mountpoint" || true' EXIT
+          app=$(find "$mountpoint" -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          installer=$(find "$app/Contents/MacOS" -maxdepth 1 -type f -perm -111 -print -quit)
+          test -n "$installer"
+          env -u DISPLAY -u WAYLAND_DISPLAY QT_QPA_PLATFORM=offscreen "$installer" --root "$RUNNER_TEMP/rb-headless-macos" --accept-licenses --default-answer --confirm-command install
+          test -x "$RUNNER_TEMP/rb-headless-macos/bin/remotebrowsermcp"
+          "$RUNNER_TEMP/rb-headless-macos/bin/remotebrowsermcp" --self-test
+      - name: Test Linux installer without DISPLAY
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          installer=$(find dist -maxdepth 1 -name 'RemoteBrowserMCP-v*-linux-amd64.run' -print -quit)
+          chmod +x "$installer"
+          env -u DISPLAY -u WAYLAND_DISPLAY QT_QPA_PLATFORM=offscreen "$installer" --root "$RUNNER_TEMP/rb-headless-linux" --accept-licenses --default-answer --confirm-command install
+          test -x "$RUNNER_TEMP/rb-headless-linux/bin/remotebrowsermcp"
+          "$RUNNER_TEMP/rb-headless-linux/bin/remotebrowsermcp" --self-test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-RemoteBrowserMCP-${{ matrix.target }}-${{ matrix.arch }}-offline
+          path: dist/RemoteBrowserMCP-*.${{ matrix.extension }}
+          if-no-files-found: error
+          retention-days: 14
   publish:
     name: Build and publish verified artifacts
-    needs: verify
+    needs: [verify, native-installer]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -47,6 +197,21 @@ jobs:
           test -f THIRD_PARTY_NOTICES.md
           test -f README.md
           test -f README_ZH.md
+      - name: Download the three verified native installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-RemoteBrowserMCP-*-offline
+          path: dist
+          merge-multiple: true
+      - name: Verify native installer filenames
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          for artifact in             "RemoteBrowserMCP-v${version}-windows-amd64.exe"             "RemoteBrowserMCP-v${version}-linux-amd64.run"             "RemoteBrowserMCP-v${version}-darwin-amd64.dmg"; do
+            test -s "dist/$artifact"
+            echo "Verified release artifact: $artifact"
+          done
       - name: Build three platform archives
         shell: bash
         run: |
@@ -58,14 +223,14 @@ jobs:
           git archive --format=tar --prefix="$prefix/" HEAD | gzip -n > "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz"
           (
             cd dist
-            sha256sum *.zip *.tar.gz > SHA256SUMS
+            sha256sum *.zip *.tar.gz RemoteBrowserMCP-*.* > SHA256SUMS
             sha256sum -c SHA256SUMS
           )
           unzip -Z1 "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip" | grep -Fx "$prefix/LICENSE"
           unzip -Z1 "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip" | grep -Fx "$prefix/THIRD_PARTY_NOTICES.md"
           unzip -Z1 "dist/remote-browser-mcp-${GITHUB_REF_NAME}-windows.zip" | grep -Fx "$prefix/setup.cmd"
           tar -tzf "dist/remote-browser-mcp-${GITHUB_REF_NAME}-linux.tar.gz" | grep -Fx "$prefix/setup.sh"
-          tar -tzf "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz" | grep -Fx "$prefix/setup.command"
+          tar -tzf "dist/remote-browser-mcp-${GITHUB_REF_NAME}-macos.tar.gz" | grep -Fx "$prefix/setup.sh"
           if git ls-files | grep -E '(^|/)(config[.]toml|node_modules|Data|[.]env)(/|$)'; then
             echo 'Refusing to release tracked private configuration' >&2
             exit 1

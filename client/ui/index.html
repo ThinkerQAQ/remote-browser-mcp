@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RemoteBrowserMCP</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+<header><h1>RemoteBrowserMCP</h1><span class="sub">Local connection management</span></header>
+<section><h2>ChatGPT connection</h2>
+<div class="links"><a href="https://platform.openai.com/settings/organization/tunnels" target="_blank" rel="noopener noreferrer">Tunnel settings</a><a href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noopener noreferrer">API keys</a><a href="https://chatgpt.com/plugins" target="_blank" rel="noopener noreferrer">ChatGPT Plugins</a></div>
+<label for="id">Tunnel ID</label><input id="id" type="text" autocomplete="off" spellcheck="false" maxlength="256">
+<label for="key">Runtime API Key</label><input id="key" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096">
+<div id="saved" class="hint"></div>
+<div class="buttons"><button id="save" class="primary">Save</button><button id="service">Start Service</button><button id="refresh">Refresh Status</button></div>
+</section><section><h2>Status</h2><div class="status"><span>Local Tunnel</span><strong id="connection">Checking…</strong></div>
+<div class="status"><span>Service</span><strong id="running">Checking…</strong></div>
+<div class="status"><span>ChatGPT plugin</span><strong>Not verified</strong></div><p id="message" role="status" aria-live="polite"></p></section>
+</main><script src="/app.js"></script></body></html>
