@@ -21,7 +21,7 @@ const copy = {
     startMessage:'Start requested. Waiting for the Tunnel to become ready.', stopMessage:'Service stopped.',
     restartMessage:'Restart requested. Waiting for the Tunnel to become ready.',
     requestFailed:'Operation failed. Check status before trying again.', statusFailed:'Unable to read local status. Retrying automatically.',
-    showKey:'Show entered key', hideKey:'Hide entered key'
+    standbyMessage:'Local service is running in standby. Use Connect Tunnel when needed.', startupUnavailable:'Cannot read system startup settings. Check your system permissions and login session.', autostart:'Start local service at login', autostartHint:'Applies at your next system login. Save does not start or stop the service.', autoConnect:'Connect Tunnel automatically', autoConnectHint:'Connect when the local service starts. Restart a running service to apply changes.', standby:'Service running · Tunnel disconnected', connect:'Connect Tunnel', disconnect:'Disconnect Tunnel', connectMessage:'Tunnel connection requested.', disconnectMessage:'Tunnel disconnected. Local service is still running.', connecting:'Connecting…', disconnecting:'Disconnecting…', showKey:'Show entered key', hideKey:'Hide entered key'
   },
   zh: {
     title:'连接设置', subtitle:'让 ChatGPT 连接并操作你的浏览器。', overview:'连接状态',
@@ -40,14 +40,14 @@ const copy = {
     savedMessage:'配置已保存。', noChanges:'配置已经保存，无需重复保存。', pendingMessage:'配置已保存，重启服务后生效。',
     startMessage:'已请求启动，正在等待 Tunnel 就绪。', stopMessage:'服务已停止。', restartMessage:'已请求重启，正在等待 Tunnel 就绪。',
     requestFailed:'操作未成功，请检查状态后重试。', statusFailed:'暂时无法读取本地状态，正在自动重试。',
-    showKey:'显示新输入的密钥', hideKey:'隐藏新输入的密钥'
+    standbyMessage:'本地服务已启动并待命，需要时可手动连接 Tunnel。', startupUnavailable:'无法读取系统自启动设置，请检查系统权限和登录会话。', autostart:'本地服务开机自启动', autostartHint:'下次登录系统时启动。保存不会启动或停止当前服务。', autoConnect:'Tunnel 自动连接', autoConnectHint:'本地服务启动后自动连接 Tunnel。修改后重启当前服务生效。', standby:'服务运行中 · Tunnel 未连接', connect:'连接 Tunnel', disconnect:'断开 Tunnel', connectMessage:'已请求连接 Tunnel。', disconnectMessage:'Tunnel 已断开，本地服务继续运行。', connecting:'正在连接…', disconnecting:'正在断开…', showKey:'显示新输入的密钥', hideKey:'隐藏新输入的密钥'
   }
 };
 let language = navigator.language?.startsWith('zh') ? 'zh' : 'en';
 let saved = {}, loaded = false, available = false, busy = '', epoch = 0;
 let notice = '', noticeError = false;
 const t = name => copy[language][name] || name;
-const draft = () => ({id:$('id').value, key:$('key').value});
+const draft = () => ({id:$('id').value, key:$('key').value, autostart_enabled:$('autostart').checked, tunnel_auto_connect:$('auto-connect').checked});
 function message(name, error = false) { notice = name; noticeError = error; render(); }
 function render() {
   const controls = controlState(saved, draft(), busy, available);
@@ -59,7 +59,11 @@ function render() {
   $('service').textContent = t(controls.running ? 'stop' : 'start');
   $('restart').disabled = !controls.canRestart;
   $('save').textContent = t('save'); $('restart').textContent = t('restart');
-  $('id').disabled = $('key').disabled = !!busy;
+  $('id').disabled = $('key').disabled = $('auto-connect').disabled = !!busy;
+  $('autostart').disabled = !!busy || !loaded || saved.autostart_enabled === null;
+  $('startup-error').textContent = loaded && saved.autostart_enabled === null ? t('startupUnavailable') : '';
+  $('tunnel').textContent = t(saved.tunnel_connecting ? 'disconnect' : 'connect');
+  $('tunnel').disabled = !(saved.tunnel_connecting ? controls.canDisconnect : controls.canConnect);
   $('id-hint').textContent = t($('id').value.trim() !== (saved.id || '') ? 'newID' : saved.id ? 'saved' : 'unsaved');
   $('key').placeholder = savedKeyMask(saved.has_key);
   $('key-hint').textContent = t($('key').value ? 'newKey' : saved.has_key ? 'savedKey' : 'unsaved');
@@ -79,6 +83,9 @@ function localize() {
 function accept(data, afterSave = false) {
   // Polling may update status but must preserve a visible, unsaved ID draft.
   if (!loaded || afterSave || $('id').value === (saved.id || '')) $('id').value = data.id || '';
+  for (const [id, field, fallback] of [['autostart','autostart_enabled',false],['auto-connect','tunnel_auto_connect',true]]) {
+    if (!loaded || afterSave || $(id).checked === (saved[field] ?? fallback)) $(id).checked = data[field] ?? fallback;
+  }
   saved = data; available = true; loaded = true;
   if (notice === 'statusFailed') notice = '';
   render();
@@ -97,16 +104,18 @@ async function refresh() {
 }
 async function action(name) {
   const controls = controlState(saved, draft(), busy, available);
-  if (busy || (name === 'start' && !controls.canStart) || (name === 'stop' && !controls.canStop) || (name === 'restart' && !controls.canRestart)) return;
+  if (busy || (name === 'start' && !controls.canStart) || (name === 'stop' && !controls.canStop) || (name === 'restart' && !controls.canRestart) || (name === 'connect' && !controls.canConnect) || (name === 'disconnect' && !controls.canDisconnect)) return;
   const body = {action:name};
   const unchanged = name === 'save' && !controls.hasChanges && controls.configured;
   if (name === 'save') {
     body.id = $('id').value.trim(); body.key = $('key').value;
+    if (saved.autostart_enabled !== null) body.autostart_enabled = $('autostart').checked;
+    body.tunnel_auto_connect = $('auto-connect').checked;
     if (!validID(body.id)) { message('invalidID', true); return; }
     if (!body.key && !saved.has_key) { message('missingKey', true); return; }
     if (/[\r\n\x00]/.test(body.key) || /^\*+$/.test(body.key)) { message('invalidKey', true); return; }
   }
-  ++epoch; busy = {save:'saving',start:'starting',stop:'stopping',restart:'restarting'}[name]; notice = ''; render();
+  ++epoch; busy = {save:'saving',start:'starting',stop:'stopping',restart:'restarting',connect:'connecting',disconnect:'disconnecting'}[name]; notice = ''; render();
   let failed = false;
   try {
     const response = await fetch('/api/action', {method:'POST',headers:{'Content-Type':'application/json','X-RB-Session':'1'},body:JSON.stringify(body),signal:AbortSignal.timeout(45000)});
@@ -114,7 +123,7 @@ async function action(name) {
     if (!response.ok) throw Error();
     if (name === 'save') { $('key').value = ''; $('key').type = 'password'; }
     accept(data, name === 'save');
-    notice = name === 'save' ? unchanged ? 'noChanges' : data.restart_required ? 'pendingMessage' : 'savedMessage' : name + 'Message';
+    notice = name === 'save' ? unchanged ? 'noChanges' : data.restart_required ? 'pendingMessage' : 'savedMessage' : (name === 'start' || name === 'restart') && !data.tunnel_auto_connect ? 'standbyMessage' : name + 'Message';
     noticeError = false;
   } catch {
     failed = true; available = false; notice = 'requestFailed'; noticeError = true;
@@ -127,6 +136,8 @@ async function action(name) {
 }
 $('connection-form').addEventListener('submit', event => { event.preventDefault(); action('save'); });
 $('service').addEventListener('click', () => action(saved.managed_process_running ? 'stop' : 'start'));
+$('tunnel').addEventListener('click', () => action(saved.tunnel_connecting ? 'disconnect' : 'connect'));
+for (const id of ['autostart','auto-connect']) $(id).addEventListener('change', () => { notice = ''; render(); });
 $('restart').addEventListener('click', () => action('restart'));
 $('language').addEventListener('click', () => { language = language === 'zh' ? 'en' : 'zh'; localize(); });
 for (const id of ['id','key']) {

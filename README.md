@@ -88,6 +88,27 @@ Create a [Tunnel ID](https://platform.openai.com/settings/organization/tunnels) 
 
 Enter the Tunnel ID and Runtime API Key, click **Save**, then **Start Service**. Status updates automatically; wait for **Tunnel ready** in the upper-right corner. To apply saved changes while the service is running, use **Restart Service**. A saved key is shown as a masked placeholder; leave the field blank to reuse it.
 
+The connection page has two independent preferences:
+
+- **Start local service at login** registers a real startup entry for the current installation. Windows uses a limited, interactive Task Scheduler logon task without storing an account password; Linux uses a systemd user unit; macOS uses a LaunchAgent. Existing native service installations keep their service manager and change its startup setting instead. Saving never starts or stops the current service. A usable user session and permission to manage the corresponding startup entry are required; registration errors are reported rather than treated as success.
+- **Connect Tunnel automatically** controls whether a newly started service connects the saved Tunnel. It defaults to enabled for existing installations. When disabled, the service starts in standby; **Connect Tunnel** and **Disconnect Tunnel** control the current connection without changing this preference. Restart applies saved connection changes and the automatic-connection preference.
+
+**Stop Service** stops this run, including the Tunnel, while retaining both preferences. If login startup remains enabled, the next login starts it again. Disabling login startup does not stop the current run. On macOS a newly enabled LaunchAgent is loaded at the next login; use **Start Service** to run immediately. Linux user startup normally occurs at login, not before login; this client does not enable lingering. Windows and macOS browser access likewise runs in the user's login session.
+
+CLI equivalents (use the Windows executable path where appropriate):
+
+```sh
+./bin/remotebrowsermcp configure --id tunnel_EXAMPLE --autostart=true --auto-connect=false
+./bin/remotebrowsermcp start
+./bin/remotebrowsermcp connect
+./bin/remotebrowsermcp disconnect
+```
+
+These commands reuse an already saved key. For a first setup, also pass `--api-key-stdin`. Omitted preference flags preserve the saved values. `status` reports the actual OS startup registration; an unavailable OS backend is not reported as enabled. Failed registration restores the previous connection files and attempts to restore the previous registration.
+
+For upgrades, keep the same installation directory and use the maintenance/update flow; retain `config.toml`, `runtime/`, browser profiles and user data. Startup preferences live in private `runtime/setup.json`, alongside the existing Tunnel ID; the key remains in private `runtime/credentials.json`. Installer payloads exclude these files and data directories. Moving the installation changes its startup identity: disable the old installation's startup entry before moving, then enable it from the new location. To uninstall, first disable login startup and stop the service (or uninstall an explicitly installed native service), then remove the application.
+
+
 #### 2.2.2. Command Line
 
 From the installation directory:

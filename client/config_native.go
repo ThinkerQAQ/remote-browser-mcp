@@ -15,12 +15,14 @@ import (
 )
 
 type persistedSetup struct {
-	Revision   string   `json:"revision,omitempty"`
-	ID         string   `json:"id"`
-	Tunnel     string   `json:"tunnel"`
-	TunnelArgs []string `json:"tunnelArgs"`
-	Port       int      `json:"port"`
-	Manager    string   `json:"manager"`
+	Autostart   *bool    `json:"autostart_enabled,omitempty"`
+	AutoConnect *bool    `json:"tunnel_auto_connect,omitempty"`
+	Revision    string   `json:"revision,omitempty"`
+	ID          string   `json:"id"`
+	Tunnel      string   `json:"tunnel"`
+	TunnelArgs  []string `json:"tunnelArgs"`
+	Port        int      `json:"port"`
+	Manager     string   `json:"manager"`
 }
 type persistedCredentials struct {
 	APIKey string `json:"apiKey"`
