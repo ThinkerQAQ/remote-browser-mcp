@@ -9,7 +9,7 @@ import {once} from 'node:events';
 
 // A synthetic Tunnel worker exercises lifecycle without a browser or OpenAI.
 test('Go-compatible worker authenticates control, owns its label and passes key only in environment', {timeout:30000}, async () => {
- const root = fs.mkdtempSync(path.join(os.tmpdir(),'browser-client-'));
+ const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'browser-client-')));
  fs.mkdirSync(path.join(root,'scripts')); fs.mkdirSync(path.join(root,'runtime'),{mode:0o700});
  for (const file of ['runtime.mjs','private-files.mjs','entrypoint.mjs']) fs.copyFileSync(new URL('../scripts/'+file,import.meta.url),path.join(root,'scripts',file));
  const secret='synthetic-runtime-key';
