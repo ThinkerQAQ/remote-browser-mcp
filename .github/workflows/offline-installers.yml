@@ -5,6 +5,8 @@ on:
       - 'packaging/**'
       - 'client/**'
       - 'scripts/**'
+      - 'tests/**'
+      - 'config.example.toml'
       - 'package*.json'
       - '.github/workflows/offline-installers.yml'
   workflow_dispatch:
