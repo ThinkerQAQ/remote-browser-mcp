@@ -20,7 +20,7 @@ The MCP SDK identifier above is for the **locked 1.32.2 package**; upstream may 
 
 ## Optional external transport / 可选外部传输工具
 
-- [`openai/tunnel-client`](https://github.com/openai/tunnel-client) — `Apache-2.0`. This is installed and run separately by the operator; its source and executable are **not** part of this repository. Its own license and distribution notices apply.
+- [`openai/tunnel-client`](https://github.com/openai/tunnel-client) — `Apache-2.0`. Native installers bundle its verified release and license texts; its source is not vendored in this repository. Its own license and distribution notices apply.
 
 ## Redistribution / 再分发要求
 
@@ -33,3 +33,18 @@ The MCP SDK identifier above is for the **locked 1.32.2 package**; upstream may 
 - 本表**只覆盖直接依赖，并非完整的传递依赖许可证清单**。若发行包包含 `node_modules`、打包的可执行文件或内嵌依赖，须按**实际发行产物**保留所有适用的完整许可证、版权声明与 NOTICE 文件。
 - 本文件提供的上游链接**不能替代**发行包中依法需要附带的许可证文本。
 - 第三方名称和商标归各自权利人所有，不表示存在官方合作或背书。
+
+## Client and installer / 客户端与安装器
+
+The Go client and Qt installer integration are adapted from ThinkerQAQ/remote-desktop-mcp v0.5.0 (Apache-2.0). Browser-specific configuration and runtime integration are maintained here.
+
+Go 客户端与 Qt 安装器集成复用 remote-desktop-mcp v0.5.0（Apache-2.0），浏览器配置与运行对接在本仓库适配。
+
+| Module | Version | License |
+| --- | --- | --- |
+| golang.org/x/term | v0.32.0 | BSD-3-Clause |
+| golang.org/x/sys | v0.33.0 | BSD-3-Clause |
+| github.com/kardianos/service | v1.2.3 | Zlib |
+| github.com/pelletier/go-toml/v2 | v2.2.3 | MIT |
+
+Installers also contain Node.js and the OpenAI Tunnel client. Full license texts and verified bundled versions are included in `third_party/`; npm dependency notices remain in the bundled `node_modules`.

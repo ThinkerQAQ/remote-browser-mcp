@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ConfigureConnection</class>
+ <widget class="QWidget" name="ConfigureConnection">
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item><widget class="QLabel" name="titleLabel">
+    <property name="text"><string>RemoteBrowserMCP has been installed</string></property>
+   </widget></item>
+   <item><widget class="QLabel" name="descriptionLabel">
+    <property name="text"><string>Installation complete. Configure RemoteBrowserMCP from the application when you are ready.</string></property>
+    <property name="wordWrap"><bool>true</bool></property>
+   </widget></item>
+   <item><widget class="QCheckBox" name="configureNowCheckBox">
+    <property name="text"><string>Open RemoteBrowserMCP configuration</string></property>
+    <property name="checked"><bool>true</bool></property>
+   </widget></item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

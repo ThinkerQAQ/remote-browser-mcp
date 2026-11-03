@@ -1,0 +1,156 @@
+name: Native Offline Installers
+on:
+  pull_request:
+    paths:
+      - 'packaging/**'
+      - 'client/**'
+      - 'scripts/**'
+      - 'tests/**'
+      - 'config.example.toml'
+      - 'package*.json'
+      - '.github/workflows/offline-installers.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+            arch: amd64
+            extension: exe
+          - os: ubuntu-24.04
+            target: linux
+            arch: amd64
+            extension: run
+          - os: macos-15
+            target: darwin
+            arch: amd64
+            extension: dmg
+    runs-on: ${{ matrix.os }}
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: client/go.mod
+          cache-dependency-path: client/go.sum
+      - name: Test cross-platform Go client
+        shell: bash
+        run: |
+          cd client
+          go test ./...
+          go vet ./...
+      - run: npm ci --no-audit --no-fund
+      - run: npm run check
+      - run: node scripts/client-smoke.mjs
+      - name: Test offline installer security and metadata
+        run: python -m unittest discover -s packaging/tests -v
+      - name: Install Qt Installer Framework builder
+        uses: jurplel/install-qt-action@v4
+        with:
+          no-qt-binaries: 'true'
+          tools: tools_ifw
+      - name: Build fully bundled payload from verified releases
+        run: python packaging/stage_runtime.py --platform ${{ matrix.target }} --arch ${{ matrix.arch }} --output dist/stage
+      - name: Verify headless Go client without a display
+        shell: bash
+        run: |
+          set -e
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            client="dist/stage/bin/remotebrowsermcp.exe"
+          else
+            client="dist/stage/bin/remotebrowsermcp"
+          fi
+          env -u DISPLAY -u WAYLAND_DISPLAY "$client" --self-test
+          env -u DISPLAY -u WAYLAND_DISPLAY "$client" status
+
+      - name: Confirm bundled MCP works without system Node
+        shell: bash
+        run: |
+          if [[ '${{ matrix.target }}' == 'windows' ]]; then
+            dist/stage/bin/node.exe dist/stage/scripts/client-smoke.mjs
+          else
+            dist/stage/bin/node dist/stage/scripts/client-smoke.mjs
+          fi
+      - name: Verify Windows branded native management entrypoints
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          foreach ($entry in @("dist/stage/bin/RemoteBrowserMCP-Configure.exe", "dist/stage/RemoteBrowserMCP-Maintenance.exe")) {
+            if (!(Test-Path $entry)) { throw "Missing native GUI entrypoint: $entry" }
+            $process = Start-Process -FilePath (Resolve-Path $entry).Path -ArgumentList "--self-test" -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "Native GUI selftest failed ($($process.ExitCode)): $entry" }
+          }
+      - name: Build native offline Qt installer
+        shell: bash
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          python packaging/qt_installer.py \
+            --platform "${{ matrix.target }}" --stage dist/stage \
+            --version "$version" \
+            --output "dist/RemoteBrowserMCP-v${version}-${{ matrix.target }}-${{ matrix.arch }}.${{ matrix.extension }}"
+      - name: Test Linux installer with no graphical display
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          installer=$(find dist -maxdepth 1 -name 'RemoteBrowserMCP-v*-linux-amd64.run' -print -quit)
+          chmod +x "$installer"
+          env -u DISPLAY -u WAYLAND_DISPLAY QT_QPA_PLATFORM=offscreen "$installer" --root "$RUNNER_TEMP/rb-headless" --accept-licenses --default-answer --confirm-command install
+          test -x "$RUNNER_TEMP/rb-headless/bin/remotebrowsermcp"
+          "$RUNNER_TEMP/rb-headless/bin/remotebrowsermcp" --self-test
+      - name: Test Windows installer in CLI mode
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist/RemoteBrowserMCP-v*-windows-amd64.exe | Select-Object -First 1).FullName
+          $root = Join-Path $env:RUNNER_TEMP 'rb-headless-windows'
+          # The GUI-subsystem Qt launcher can spawn an installer child and exit
+          # before extraction finishes. Wait for the entire process tree.
+          $process = Start-Process -FilePath $installer -ArgumentList @('--root', $root, '--accept-licenses', '--default-answer', '--confirm-command', 'install') -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Windows CLI installer failed ($($process.ExitCode))" }
+          if (!(Test-Path (Join-Path $root 'bin/remotebrowsermcp.exe'))) { throw 'Windows CLI install did not produce the bundled client' }
+          & (Join-Path $root 'bin/remotebrowsermcp.exe') --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Windows CLI client missing' }
+      - name: Test macOS DMG installation over CLI without a login GUI
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg=$(find dist -maxdepth 1 -name 'RemoteBrowserMCP-v*-darwin-amd64.dmg' -print -quit)
+          mountpoint="$RUNNER_TEMP/rb-dmg"
+          mkdir -p "$mountpoint"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mountpoint" "$dmg"
+          trap 'hdiutil detach "$mountpoint" || true' EXIT
+          app=$(find "$mountpoint" -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$app"
+          installer=$(find "$app/Contents/MacOS" -maxdepth 1 -type f -perm -111 -print -quit)
+          test -n "$installer"
+          env -u DISPLAY -u WAYLAND_DISPLAY QT_QPA_PLATFORM=offscreen "$installer" --root "$RUNNER_TEMP/rb-headless-macos" --accept-licenses --default-answer --confirm-command install
+          test -x "$RUNNER_TEMP/rb-headless-macos/bin/remotebrowsermcp"
+          "$RUNNER_TEMP/rb-headless-macos/bin/remotebrowsermcp" --self-test
+      - name: Verify Windows installer does not open a console
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -c "from pathlib import Path; from packaging.windows_gui_template import WINDOWS_GUI, pe_subsystem; files = list(Path('dist').glob('RemoteBrowserMCP-v*-windows-amd64.exe')); assert len(files) == 1, files; assert pe_subsystem(files[0]) == WINDOWS_GUI, 'Windows installer must use GUI subsystem'"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RemoteBrowserMCP-${{ matrix.target }}-${{ matrix.arch }}-offline
+          path: dist/RemoteBrowserMCP-*.${{ matrix.extension }}
+          if-no-files-found: error
+          retention-days: 14

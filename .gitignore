@@ -6,3 +6,8 @@ dist/
 .cache/
 .DS_Store
 config.toml
+
+runtime/
+client/remotebrowsermcp*
+__pycache__/
+bin/

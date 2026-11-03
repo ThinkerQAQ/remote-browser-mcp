@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RemoteBrowserMCP</title><link rel="stylesheet" href="/style.css"></head>
+<body><main>
+<header class="page-header"><div><div class="eyebrow">REMOTE BROWSER MCP</div><h1 data-i18n="title">Connection settings</h1><p data-i18n="subtitle">Connect ChatGPT to your browser.</p></div><button id="language" class="language" type="button" aria-label="Switch language">中文</button></header>
+<div class="workflow">
+<div class="workflow-header"><span data-i18n="overview">Connection status</span><span id="status" class="status-chip" role="status" aria-live="polite" data-kind="idle"><span class="dot"></span><span id="status-text">Checking…</span></span></div>
+<section aria-labelledby="local-heading"><div class="section-heading"><span class="step">01</span><div><h2 id="local-heading" data-i18n="localTitle">Local Tunnel service</h2><p data-i18n="localDescription">Save your connection settings, then start the service.</p></div></div>
+<form id="connection-form" autocomplete="off">
+<div class="field"><div class="field-heading"><label for="id">Tunnel ID</label><a class="help" href="https://platform.openai.com/settings/organization/tunnels" target="_blank" rel="noopener noreferrer" data-help="idHelp" aria-label="Create or manage a Tunnel">?</a></div>
+<input id="id" name="tunnel-connection-id" type="text" autocomplete="off" spellcheck="false" maxlength="256" readonly data-lpignore="true" data-1p-ignore="true" data-form-type="other"><small id="id-hint"></small></div>
+<div class="field"><div class="field-heading"><label for="key">Runtime API Key</label><a class="help" href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noopener noreferrer" data-help="keyHelp" aria-label="Create a Runtime API Key">?</a></div>
+<div class="key-input"><input id="key" name="tunnel-runtime-credential" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096" readonly data-lpignore="true" data-1p-ignore="true" data-form-type="other"><button id="reveal" type="button" class="reveal" disabled aria-pressed="false" aria-label="Show entered key"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><small id="key-hint"></small></div>
+<div class="buttons"><button id="save" class="primary" type="submit">Save</button><button id="service" class="primary" type="button" disabled>Start Service</button><button id="restart" class="primary" type="button" disabled>Restart Service</button></div>
+<p id="message" class="message" role="status" aria-live="polite"></p>
+</form></section>
+<section class="plugin-panel" aria-labelledby="plugin-heading"><div class="section-heading"><span class="step">02</span><div><h2 id="plugin-heading" data-i18n="pluginTitle">ChatGPT plugin</h2><p id="plugin-description"></p></div></div><a class="plugin-link" href="https://chatgpt.com/plugins" target="_blank" rel="noopener noreferrer"><span data-i18n="pluginLink">Open ChatGPT plugin settings</span><span aria-hidden="true">↗</span></a></section>
+</div><p class="footer" data-i18n="footer">Settings stay on this computer. Saved API keys are never sent back to this page.</p>
+</main><script type="module" src="/app.js"></script></body></html>
