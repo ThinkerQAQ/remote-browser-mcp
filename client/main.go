@@ -41,6 +41,8 @@ type state struct {
 	Ready           bool   `json:"tunnel_ready"`
 	Manager         string `json:"manager"`
 	Autostart       *bool  `json:"autostart_enabled"`
+	AutoConnect     bool   `json:"tunnel_auto_connect"`
+	Connecting      bool   `json:"tunnel_connecting"`
 	Error           string `json:"error,omitempty"`
 }
 type setupState struct {
@@ -225,9 +227,11 @@ func webGUI(root string) error {
 		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 		defer r.Body.Close()
 		var request struct {
-			Action string `json:"action"`
-			ID     string `json:"id"`
-			Key    string `json:"key"`
+			Action      string `json:"action"`
+			Autostart   *bool  `json:"autostart_enabled"`
+			AutoConnect *bool  `json:"tunnel_auto_connect"`
+			ID          string `json:"id"`
+			Key         string `json:"key"`
 		}
 		if json.NewDecoder(r.Body).Decode(&request) != nil {
 			http.Error(w, "Invalid request", 400)
@@ -243,7 +247,9 @@ func webGUI(root string) error {
 		var e error
 		switch request.Action {
 		case "save":
-			e = save(root, strings.TrimSpace(request.ID), request.Key)
+			e = savePreferences(root, strings.TrimSpace(request.ID), request.Key, request.Autostart, request.AutoConnect)
+		case "connect", "disconnect":
+			e = connectionAction(root, request.Action)
 		case "start", "stop", "restart":
 			e = service(root, request.Action)
 		default:
@@ -381,6 +387,11 @@ func main() {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(b)
+	case "connect", "disconnect":
+		if e = connectionAction(root, action); e != nil {
+			log.Fatal(e)
+		}
+		fmt.Println(action + " succeeded")
 	case "start", "stop", "restart":
 		if e = service(root, action); e != nil {
 			log.Fatal(e)
@@ -390,6 +401,8 @@ func main() {
 		f := flag.NewFlagSet("configure", flag.ExitOnError)
 		id := f.String("id", "", "Tunnel ID")
 		fromStdin := f.Bool("api-key-stdin", false, "Read runtime API key from standard input")
+		startup := f.Bool("autostart", false, "Start local service at system login")
+		connect := f.Bool("auto-connect", true, "Connect Tunnel when local service starts")
 		_ = f.Parse(args)
 		isTTY := term.IsTerminal(int(os.Stdin.Fd()))
 		if !*fromStdin && !isTTY && (*id == "" || !readState(root).HasKey) {
@@ -425,7 +438,16 @@ func main() {
 		if len(key) > 4096 {
 			log.Fatal("API key too long")
 		}
-		if e = save(root, *id, key); e != nil {
+		var startupOption, connectOption *bool
+		f.Visit(func(option *flag.Flag) {
+			if option.Name == "autostart" {
+				startupOption = startup
+			}
+			if option.Name == "auto-connect" {
+				connectOption = connect
+			}
+		})
+		if e = savePreferences(root, *id, key, startupOption, connectOption); e != nil {
 			log.Fatal(e)
 		}
 		fmt.Println("Configuration saved; service state unchanged")

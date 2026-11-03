@@ -57,6 +57,9 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run check
       - run: node scripts/client-smoke.mjs
+      - name: Verify real Windows login task with isolated synthetic Tunnel
+        if: runner.os == 'Windows'
+        run: node scripts/verify-startup.mjs
       - name: Test offline installer security and metadata
         run: python -m unittest discover -s packaging/tests -v
       - name: Install Qt Installer Framework builder

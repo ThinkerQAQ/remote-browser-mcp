@@ -25,8 +25,9 @@ type controlData struct {
 }
 
 type workerStatus struct {
-	Label    string `json:"label"`
-	Revision string `json:"revision"`
+	Connecting *bool  `json:"connecting,omitempty"`
+	Label      string `json:"label"`
+	Revision   string `json:"revision"`
 }
 
 func localWorkerStatus(root, action string) (workerStatus, bool) {
@@ -40,7 +41,7 @@ func localWorkerStatus(root, action string) (workerStatus, bool) {
 		return result, false
 	}
 	method := "GET"
-	if action == "stop" {
+	if action == "stop" || action == "connect" || action == "disconnect" {
 		method = "POST"
 	}
 	req, e := http.NewRequest(method, fmt.Sprintf("http://127.0.0.1:%d/%s", c.Port, action), nil)
@@ -48,7 +49,11 @@ func localWorkerStatus(root, action string) (workerStatus, bool) {
 		return result, false
 	}
 	req.Header.Set("Authorization", "Bearer "+c.Token)
-	client := &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	timeout := 2 * time.Second
+	if action == "disconnect" {
+		timeout = 6 * time.Second
+	}
+	client := &http.Client{Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	response, e := client.Do(req)
 	if e != nil {
 		return result, false
@@ -63,6 +68,27 @@ func localWorkerStatus(root, action string) (workerStatus, bool) {
 func localControl(root, action string) bool {
 	_, ok := localWorkerStatus(root, action)
 	return ok
+}
+func connectionAction(root, action string) error {
+	if action != "connect" && action != "disconnect" {
+		return errors.New("invalid Tunnel action")
+	}
+	s := nativeState(root)
+	if !s.Managed {
+		return errors.New("start the local service first")
+	}
+	if action == "connect" {
+		if s.RestartRequired {
+			return errors.New("restart to apply saved configuration first")
+		}
+		if err := validateSavedConnection(root); err != nil {
+			return err
+		}
+	}
+	if !localControl(root, action) {
+		return errors.New("Tunnel operation failed; restart the service if upgrading an older worker")
+	}
+	return nil
 }
 func tunnelHealth(root string) bool {
 	s, e := readSetup(root)
@@ -83,6 +109,28 @@ func tunnelHealth(root string) bool {
 }
 
 func launchRuntime(root string) error {
+	// OS-released installation lock also covers a login racing with manual Start.
+	lock, err := os.OpenFile(filepath.Join(root, "runtime", "worker.lock"), os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return err
+	}
+	defer lock.Close()
+	if err := protectPrivate(lock.Name(), false); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if err := lockWorker(lock); err == nil {
+			break
+		}
+		if localControl(root, "status") {
+			return nil
+		}
+		if time.Now().After(deadline) {
+			return errors.New("another worker owns this installation")
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
 	if !localControl(root, "status") {
 		// Run only the Node MCP/Tunnel worker; service lifecycle belongs to Go.
 		cmd := exec.Command(node(root), filepath.Join(root, "scripts", "runtime.mjs"), "run")
@@ -271,6 +319,11 @@ func installNativeService(root, account, scope, password string) error {
 			return err
 		}
 	}
+	if enabled, err := systemStartup().status(root, setup); err != nil {
+		return err
+	} else if enabled {
+		return errors.New("disable login startup before installing a native service")
+	}
 	cfg, e := daemonConfig(root, account, scope)
 	if e != nil {
 		return e
@@ -330,7 +383,7 @@ func controlNative(root, action string) error {
 			return e
 		}
 		if action == "start" {
-			return s.Start()
+			return systemStartup().manualServiceStart(root, setup, s.Start)
 		}
 		return s.Stop()
 	case "go-client":
@@ -371,24 +424,36 @@ func writeNativeScope(root, scope, account string) error {
 	return nil
 }
 func nativeState(root string) state {
-	out := state{}
+	out := state{AutoConnect: true}
 	setup, e := readSetup(root)
 	if e != nil {
+		if os.IsNotExist(e) {
+			enabled, err := systemStartup().status(root, persistedSetup{Manager: "go-client"})
+			if err == nil {
+				out.Autostart = &enabled
+			}
+		}
 		return out
 	}
 	out.ID = setup.ID
 	out.Revision = setup.Revision
 	out.Manager = setup.Manager
+	out.AutoConnect = setup.autoConnect()
+	enabled, startupErr := systemStartup().status(root, setup)
+	if startupErr == nil {
+		out.Autostart = &enabled
+	} else {
+		out.Error = "Cannot read system startup registration"
+	}
 	_, keyErr := savedKey(root)
 	out.HasKey = keyErr == nil
 	if setup.Manager == "go-client" || setup.Manager == "go-service" {
 		worker, alive := localWorkerStatus(root, "status")
 		out.Managed = alive
+		out.Connecting = alive && (worker.Connecting == nil || *worker.Connecting)
 		out.RestartRequired = alive && setup.Revision != worker.Revision
-		out.Ready = alive && !out.RestartRequired && tunnelHealth(root)
+		out.Ready = alive && out.Connecting && !out.RestartRequired && tunnelHealth(root)
 		if setup.Manager == "go-service" {
-			enabled := true
-			out.Autostart = &enabled
 			srv, e := nativeService(root, "", nativeScope(root))
 			if e != nil {
 				out.Error = "Native service backend unavailable"
@@ -401,7 +466,7 @@ func nativeState(root string) state {
 				return out
 			}
 			out.Managed = status == kservice.StatusRunning
-			out.Ready = out.Managed && alive && !out.RestartRequired && tunnelHealth(root)
+			out.Ready = out.Managed && alive && out.Connecting && !out.RestartRequired && tunnelHealth(root)
 		}
 		return out
 	}

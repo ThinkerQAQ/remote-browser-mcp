@@ -3,6 +3,18 @@ import assert from 'node:assert/strict';
 import {controlState, headerState, savedKeyMask} from '../client/ui/state.js';
 const configured = {id:'tunnel_saved', has_key:true, managed_process_running:false};
 const draft = {id:configured.id,key:''};
+test('startup drafts block start/restart, preserve Stop, and allow manual Tunnel control', () => {
+  const saved={...configured,autostart_enabled:false,tunnel_auto_connect:false,managed_process_running:true,tunnel_connecting:false};
+  const edit={...draft,autostart_enabled:false,tunnel_auto_connect:false};
+  assert.equal(controlState(saved,edit).canConnect,true);
+  assert.equal(headerState(saved).label,'standby');
+  const dirty={...edit,autostart_enabled:true};
+  assert.equal(controlState(saved,dirty).canRestart,false);
+  assert.equal(controlState(saved,dirty).canConnect,false);
+  assert.equal(controlState(saved,dirty).canStop,true);
+  assert.equal(controlState({...saved,tunnel_connecting:true},dirty).canDisconnect,true);
+  assert.equal(controlState({...saved,restart_required:true},edit).canConnect,false);
+});
 test('only persisted, unchanged credentials enable Start; Save remains available', () => {
   for (const [saved, edit, start] of [
     [{}, {id:'',key:''}, false],

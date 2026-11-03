@@ -88,6 +88,27 @@ QT_QPA_PLATFORM=offscreen ./RemoteBrowserMCP-v*-linux-amd64.run --root "$HOME/Re
 
 填写 Tunnel ID 和 Runtime API Key，点击**保存**，再点击**启动服务**。页面会自动检测状态，等待右上角显示 **Tunnel 已就绪**。服务运行时修改并保存配置后，点击**重启服务**使其生效。已保存的密钥显示星号占位，留空即可复用。
 
+连接页面提供两个独立偏好：
+
+- **本地服务开机自启动**：为当前安装注册真实的系统启动项。Windows 使用当前用户的低权限交互式登录任务，不保存系统账户密码；Linux 使用 systemd 用户单元；macOS 使用 LaunchAgent。已有原生服务安装继续使用原服务管理器，修改其启动设置。保存不会启动或停止当前服务。需要可用的用户会话和启动项管理权限，注册失败会明确报错，不会显示为保存成功。
+- **Tunnel 自动连接**：决定本地服务启动后是否连接已保存的 Tunnel。已有安装默认保持开启。关闭后服务启动时处于待命状态，可点击**连接 Tunnel**或**断开 Tunnel**操作当前连接，不改变此偏好。保存的连接配置和自动连接偏好通过重启服务生效。
+
+**停止服务**仅停止本次运行（包括 Tunnel），保留两个偏好；若自启动仍开启，下次登录会再次启动。关闭自启动不会停止当前服务。macOS 新启用的 LaunchAgent 在下次登录时加载，立即运行请点击**启动服务**。Linux 用户服务通常在登录后启动，本客户端不会自动启用 lingering；Windows、macOS 的浏览器访问同样使用用户登录会话。
+
+命令行对应操作如下，Windows 请替换为对应的可执行文件路径：
+
+```sh
+./bin/remotebrowsermcp configure --id tunnel_EXAMPLE --autostart=true --auto-connect=false
+./bin/remotebrowsermcp start
+./bin/remotebrowsermcp connect
+./bin/remotebrowsermcp disconnect
+```
+
+示例复用已保存的密钥；首次配置还需传入 `--api-key-stdin`。未传入的偏好参数保持原值。`status` 查询实际系统启动项状态，系统接口不可用不会显示成已开启。注册失败时恢复原连接文件，并尝试恢复原系统注册状态。
+
+升级请保留原安装目录，通过维护/更新流程替换程序，保留 `config.toml`、`runtime/`、浏览器配置目录和用户数据。自启动与自动连接偏好保存在私有 `runtime/setup.json`，Tunnel ID 同样保留；密钥继续保存在私有 `runtime/credentials.json`。安装包不包含这些文件和数据目录。移动安装位置会改变启动项身份，移动前先关闭旧位置的自启动，在新位置重新开启。卸载前请先关闭自启动并停止服务（显式安装的原生服务则先卸载服务），再移除应用。
+
+
 #### 2.2.2. 命令行
 
 在安装目录运行：

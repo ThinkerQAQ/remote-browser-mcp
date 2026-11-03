@@ -11,7 +11,13 @@
 <input id="id" name="tunnel-connection-id" type="text" autocomplete="off" spellcheck="false" maxlength="256" readonly data-lpignore="true" data-1p-ignore="true" data-form-type="other"><small id="id-hint"></small></div>
 <div class="field"><div class="field-heading"><label for="key">Runtime API Key</label><a class="help" href="https://platform.openai.com/settings/organization/api-keys" target="_blank" rel="noopener noreferrer" data-help="keyHelp" aria-label="Create a Runtime API Key">?</a></div>
 <div class="key-input"><input id="key" name="tunnel-runtime-credential" type="password" autocomplete="new-password" spellcheck="false" maxlength="4096" readonly data-lpignore="true" data-1p-ignore="true" data-form-type="other"><button id="reveal" type="button" class="reveal" disabled aria-pressed="false" aria-label="Show entered key"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div><small id="key-hint"></small></div>
+<div class="preferences">
+<label class="preference"><input id="autostart" type="checkbox"><span><strong data-i18n="autostart">Start local service at login</strong><small data-i18n="autostartHint">Applies at your next system login. Save does not start or stop the service.</small></span></label>
+<label class="preference"><input id="auto-connect" type="checkbox" checked><span><strong data-i18n="autoConnect">Connect Tunnel automatically</strong><small data-i18n="autoConnectHint">Connect when the local service starts. Restart a running service to apply changes.</small></span></label>
+</div>
+<small id="startup-error" class="message" role="status"></small>
 <div class="buttons"><button id="save" class="primary" type="submit">Save</button><button id="service" class="primary" type="button" disabled>Start Service</button><button id="restart" class="primary" type="button" disabled>Restart Service</button></div>
+<button id="tunnel" class="secondary" type="button" disabled data-i18n="connect">Connect Tunnel</button>
 <p id="message" class="message" role="status" aria-live="polite"></p>
 </form></section>
 <section class="plugin-panel" aria-labelledby="plugin-heading"><div class="section-heading"><span class="step">02</span><div><h2 id="plugin-heading" data-i18n="pluginTitle">ChatGPT plugin</h2><p id="plugin-description"></p></div></div><a class="plugin-link" href="https://chatgpt.com/plugins" target="_blank" rel="noopener noreferrer"><span data-i18n="pluginLink">Open ChatGPT plugin settings</span><span aria-hidden="true">↗</span></a></section>
