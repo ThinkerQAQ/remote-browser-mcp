@@ -9,11 +9,15 @@
 
 ## 1. Introduction
 
-An AI assistant cannot interact with a page in your actual browser just because you gave it a link or screenshot. And letting it take over the tabs you are already using could disrupt your work.
+I started RemoteBrowserMCP because I wanted to use ChatGPT on the web to operate the browser on my own computer—for example, to read pages, gather information, or fill in forms.
 
-Remote Browser MCP connects an MCP-compatible assistant to **Edge or Chrome after you explicitly enable browser debugging**. It lets the assistant open a separate background tab, inspect a page and interact with websites while **keeping your existing tabs protected by default**. Calls within the same MCP process can reuse the browser connection.
+ChatGPT can analyze links, text, and screenshots, but opening a page in my browser, clicking a button, and continuing a task requires tools that can connect to that browser. For websites where I am already signed in, I also wanted it to reuse that browser session with my permission, reducing the need to copy content back and forth or perform each step myself.
 
-You can use it with a local MCP client, or connect from ChatGPT through your own Tunnel. **This is not a browser extension** and does not need to be installed in the extension manager. Background operation is best effort: browser permission dialogs and website behavior can still change focus.
+RemoteBrowserMCP provides those browser tools through MCP and uses OpenAI Secure MCP Tunnel to connect them to ChatGPT on the web. The tools run locally, and the computer initiates the Tunnel connection, so there is no need to expose the browser's debugging port to the internet.
+
+Once connected, you can describe a task in the conversation and let ChatGPT read pages, click, and type in Edge or Chrome after you have authorized remote debugging. The project protects existing tabs by default and prefers separate background tabs to minimize interruptions to everyday browsing. Calls within the same MCP process also reuse the browser connection instead of reconnecting for every operation.
+
+The project includes installers for Windows, Linux, and macOS, with graphical and command-line interfaces that share the same logic. Install it, configure the Tunnel, enable browser debugging, and register the plugin in ChatGPT to connect to your browser from ChatGPT on the web. The tools can also be used with other local MCP-compatible clients.
 
 ## 2. Quick Start
 
