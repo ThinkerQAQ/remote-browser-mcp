@@ -86,7 +86,7 @@ QT_QPA_PLATFORM=offscreen ./RemoteBrowserMCP-v*-linux-amd64.run --root "$HOME/Re
 
 #### 2.2.1. 图形界面
 
-在配置界面填写 Tunnel ID 和 Runtime API Key，保存并启动服务，然后刷新状态，确认 **Local Tunnel: Connected**。
+填写 Tunnel ID 和 Runtime API Key，点击**保存**，再点击**启动服务**。页面会自动检测状态，等待右上角显示 **Tunnel 已就绪**。服务运行时修改并保存配置后，点击**重启服务**使其生效。已保存的密钥显示星号占位，留空即可复用。
 
 #### 2.2.2. 命令行
 

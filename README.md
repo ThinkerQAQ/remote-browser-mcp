@@ -86,7 +86,7 @@ Create a [Tunnel ID](https://platform.openai.com/settings/organization/tunnels) 
 
 #### 2.2.1. Graphical Interface
 
-Enter both values in the configuration UI, save the configuration, start the service, and refresh status to confirm **Local Tunnel: Connected**.
+Enter the Tunnel ID and Runtime API Key, click **Save**, then **Start Service**. Status updates automatically; wait for **Tunnel ready** in the upper-right corner. To apply saved changes while the service is running, use **Restart Service**. A saved key is shown as a masked placeholder; leave the field blank to reuse it.
 
 #### 2.2.2. Command Line
 

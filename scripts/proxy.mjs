@@ -18,7 +18,7 @@ const pageIds=s=>[...s.matchAll(/^\s*(\d+):/gm)].map(m=>+m[1]);
 async function attach(){
   if(upstream)return;
   const transport=new StdioClientTransport({...upstreamOptions(),stderr:"pipe"});
-  const client=new Client({name:"remote-browser-proxy",version:"0.3.0"});
+  const client=new Client({name:"remote-browser-proxy",version:"0.4.0"});
   try{
     await client.connect(transport,{timeout:5000});
     const listing=await client.listTools({}, {timeout:5000});
@@ -33,7 +33,7 @@ async function reset(){
   if(old)await old.close().catch(()=>{});
   await attach();
 }
-const server=new Server({name:"remote-browser-mcp",version:"0.3.0"},{
+const server=new Server({name:"remote-browser-mcp",version:"0.4.0"},{
   capabilities:{tools:{}},
   instructions:"Use new_page to open a dedicated background tab. Never activate existing tabs."
 });
