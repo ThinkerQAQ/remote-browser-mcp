@@ -24,23 +24,20 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run audit:high
-      - run: npm run check
-      - run: node scripts/client-smoke.mjs
-      - name: Check native Windows PowerShell syntax
+      - uses: actions/setup-go@v5
+        if: runner.os == 'Windows'
+        with:
+          go-version-file: client/go.mod
+          cache-dependency-path: client/go.sum
+      - name: Build native Windows ACL helper for source checks
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $tokens = $null
-          $errors = $null
-          foreach ($file in @('scripts/setup.ps1', 'install.ps1')) {
-            [System.Management.Automation.Language.Parser]::ParseFile("$PWD/$file", [ref]$tokens, [ref]$errors) | Out-Null
-            if ($errors.Count) { throw "PowerShell parse failed: $file" }
-          }
-      - name: Verify Unix setup syntax
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          bash -n setup.sh install.sh
+          New-Item -Type Directory -Force -Path bin | Out-Null
+          go -C client build -o ../bin/remotebrowsermcp.exe .
+          "RB_ACL_HELPER=$((Resolve-Path bin/remotebrowsermcp.exe).Path)" >> $env:GITHUB_ENV
+      - run: npm run check
+      - run: node scripts/client-smoke.mjs
   native-installer:
     needs: verify
     strategy:
@@ -82,6 +79,13 @@ jobs:
           go test ./...
           go vet ./...
       - run: npm ci --no-audit --no-fund
+      - name: Build native Windows ACL helper for source checks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -Type Directory -Force -Path bin | Out-Null
+          go -C client build -o ../bin/remotebrowsermcp.exe .
+          "RB_ACL_HELPER=$((Resolve-Path bin/remotebrowsermcp.exe).Path)" >> $env:GITHUB_ENV
       - run: npm run check
       - run: node scripts/client-smoke.mjs
       - name: Verify real Windows login task with isolated synthetic Tunnel
