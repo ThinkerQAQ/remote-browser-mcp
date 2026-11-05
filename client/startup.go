@@ -364,7 +364,7 @@ func (b startupBackend) windowsRunCommand(root string) string {
 			executable = candidate
 		}
 	}
-	return fmt.Sprintf("%q %s", executable, "serve-worker")
+	return fmt.Sprintf("\"%s\" %s", executable, "serve-worker")
 }
 
 func (b startupBackend) windowsRunPresent(root string, setup persistedSetup) (bool, error) {
