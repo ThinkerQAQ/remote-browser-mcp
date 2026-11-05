@@ -1,6 +1,6 @@
 {
   "name": "remote-browser-mcp",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "description": "Persistent browser MCP with guided setup for Windows, Linux and macOS",
   "type": "module",
