@@ -14,6 +14,9 @@ class InstallerTests(unittest.TestCase):
         (stage / "node_modules" / "lib" / "data").mkdir(parents=True)
         (stage / "bin").mkdir()
         (stage / "package.json").write_text(json.dumps({"version": "0.4.0"}))
+        (stage / "package-lock.json").write_text(json.dumps({"version":"0.4.0","packages":{"":{"version":"0.4.0"}}}))
+        (stage / "third_party").mkdir()
+        (stage / "third_party/BUNDLED_VERSIONS.json").write_text(json.dumps({"app":"0.4.0","target":platform+"-amd64"}))
         (stage / "LICENSE").write_text("test license")
         (stage / "scripts/proxy.mjs").write_text("// stub")
         (stage / "scripts/launch.mjs").write_text("// stub")
@@ -37,6 +40,11 @@ class InstallerTests(unittest.TestCase):
                 dest = root / "out"
                 prepare(stage, dest, "0.4.0", platform)
                 self.assertTrue((dest / "config/config.xml").is_file())
+                import xml.etree.ElementTree as ET
+                config=ET.parse(dest / "config/config.xml")
+                self.assertEqual(config.findtext("./Version"),"0.4.0")
+                meta=next((dest / "packages").glob("*/meta/package.xml"))
+                self.assertEqual(ET.parse(meta).findtext("./Version"),"0.4.0")
                 config_page = dest / "packages/org.thinkerqaq.remotebrowser/meta/configure.ui"
                 self.assertEqual(config_page.is_file(), platform != "windows")
                 script = (dest / "packages/org.thinkerqaq.remotebrowser/meta/installscript.qs").read_text()
@@ -152,6 +160,18 @@ class InstallerTests(unittest.TestCase):
             (stage / "runtime/credentials.json").write_text("private")
             with self.assertRaisesRegex(ValueError, "runtime secrets"):
                 check_payload(stage, "windows")
+
+    def test_refuse_stale_packaging_metadata(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for filename, payload in (
+                ("package-lock.json", {"version":"0.4.0","packages":{"":{"version":"0.3.9"}}}),
+                ("third_party/BUNDLED_VERSIONS.json", {"app":"0.3.9","target":"windows-amd64"}),
+            ):
+                stage = self.fake_stage(root / filename.replace("/", "_"), "windows")
+                (stage / filename).write_text(json.dumps(payload))
+                with self.assertRaisesRegex(ValueError,"Version differs"):
+                    prepare(stage, root / (filename.replace("/", "_")+"-out"), "0.4.0", "windows")
 
     def test_refuse_wrong_version(self):
         with tempfile.TemporaryDirectory() as d:

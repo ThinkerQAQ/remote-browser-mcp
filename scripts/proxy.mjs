@@ -1,3 +1,4 @@
+import {readFileSync} from "node:fs";
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import {Client} from "@modelcontextprotocol/sdk/client/index.js";
@@ -9,6 +10,7 @@ import {browserStatus} from "./lib/status.mjs";
 import {discoverTools} from "./lib/discovery.mjs";
 import {recordSetupHealth,writeSetupHealth} from "./lib/setup-health.mjs";
 
+const appVersion=JSON.parse(readFileSync(new URL("../package.json",import.meta.url),"utf8")).version;
 let upstream=null, visibleTools=[], selectedOwned=false, selectedPageId=null;
 const owned=new Set();
 let queue=Promise.resolve();
@@ -18,7 +20,7 @@ const pageIds=s=>[...s.matchAll(/^\s*(\d+):/gm)].map(m=>+m[1]);
 async function attach(){
   if(upstream)return;
   const transport=new StdioClientTransport({...upstreamOptions(),stderr:"pipe"});
-  const client=new Client({name:"remote-browser-proxy",version:"0.5.0"});
+  const client=new Client({name:"remote-browser-proxy",version:appVersion});
   try{
     await client.connect(transport,{timeout:5000});
     const listing=await client.listTools({}, {timeout:5000});
@@ -33,7 +35,7 @@ async function reset(){
   if(old)await old.close().catch(()=>{});
   await attach();
 }
-const server=new Server({name:"remote-browser-mcp",version:"0.5.0"},{
+const server=new Server({name:"remote-browser-mcp",version:appVersion},{
   capabilities:{tools:{}},
   instructions:"Use new_page to open a dedicated background tab. Never activate existing tabs."
 });

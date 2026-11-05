@@ -51,6 +51,12 @@ def prepare(stage: Path, work: Path, version: str, target: str) -> None:
         raise ValueError("Invalid semantic version")
     if version != json.loads((stage / "package.json").read_text())["version"]:
         raise ValueError("Version differs from staged package.json")
+    lock = json.loads((stage / "package-lock.json").read_text())
+    if lock.get("version") != version or lock.get("packages", {}).get("", {}).get("version") != version:
+        raise ValueError("Version differs from staged npm package-lock.json")
+    bundled = json.loads((stage / "third_party" / "BUNDLED_VERSIONS.json").read_text())
+    if bundled.get("app") != version or not str(bundled.get("target", "")).startswith(target + "-"):
+        raise ValueError("Version differs from bundled runtime metadata")
     check_payload(stage, target)
     config = work / "config"
     meta = work / "packages" / "org.thinkerqaq.remotebrowser" / "meta"
