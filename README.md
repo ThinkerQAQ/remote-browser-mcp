@@ -48,9 +48,8 @@ Run `RemoteBrowserMCP-v*-linux-amd64.run` from your desktop environment. If exec
 Open a terminal in the download directory:
 
 
-```powershell
-$installer = (Get-ChildItem .\RemoteBrowserMCP-v*-windows-amd64.exe | Select-Object -First 1).FullName
-Start-Process -FilePath $installer -ArgumentList '--accept-licenses --default-answer --confirm-command install' -Wait
+```cmd
+for %F in (RemoteBrowserMCP-v*-windows-amd64.exe) do "%~fF" --accept-licenses --default-answer --confirm-command install
 ```
 
 
@@ -90,7 +89,7 @@ Enter the Tunnel ID and Runtime API Key, click **Save**, then **Start Service**.
 
 The connection page has two independent preferences:
 
-- **Start local service at login** registers a real startup entry for the current installation. Windows uses a limited, interactive Task Scheduler logon task without storing an account password; Linux uses a systemd user unit; macOS uses a LaunchAgent. Existing native service installations keep their service manager and change its startup setting instead. Saving never starts or stops the current service. A usable user session and permission to manage the corresponding startup entry are required; registration errors are reported rather than treated as success.
+- **Start local service at login** registers a real startup entry for the current installation. Windows uses a per-user HKCU Run entry pointing to the bundled native GUI worker (no password stored); Linux uses a systemd user unit; macOS uses a LaunchAgent. Existing native service installations keep their service manager and change its startup setting instead. Saving never starts or stops the current service. A usable user session and permission to manage the corresponding startup entry are required; registration errors are reported rather than treated as success.
 - **Connect Tunnel automatically** controls whether a newly started service connects the saved Tunnel. It defaults to enabled for existing installations. When disabled, the service starts in standby; **Connect Tunnel** and **Disconnect Tunnel** control the current connection without changing this preference. Restart applies saved connection changes and the automatic-connection preference.
 
 **Stop Service** stops this run, including the Tunnel, while retaining both preferences. If login startup remains enabled, the next login starts it again. Disabling login startup does not stop the current run. On macOS a newly enabled LaunchAgent is loaded at the next login; use **Start Service** to run immediately. Linux user startup normally occurs at login, not before login; this client does not enable lingering. Windows and macOS browser access likewise runs in the user's login session.
@@ -177,7 +176,7 @@ node scripts/client-smoke.mjs
 npm run audit:high
 ```
 
-`check` runs unit and compatibility tests; `client-smoke.mjs` checks MCP initialization and tool discovery without requiring a browser. `npm run proxy-smoke` verifies a real browser connection with a dedicated test tab. On Windows PowerShell, use `npm.cmd` if the execution policy blocks the npm shim.
+`check` runs unit and compatibility tests; `client-smoke.mjs` checks MCP initialization and tool discovery without requiring a browser. `npm run proxy-smoke` verifies a real browser connection with a dedicated test tab. On Windows CMD, run `npm.cmd` directly.
 
 Build the client with Go (`cd client && go build -o ../bin/remotebrowsermcp .`); run `go test ./...` and `go vet ./...` from `client/`.
 

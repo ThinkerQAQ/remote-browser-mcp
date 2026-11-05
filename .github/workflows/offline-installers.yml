@@ -55,6 +55,13 @@ jobs:
           go test ./...
           go vet ./...
       - run: npm ci --no-audit --no-fund
+      - name: Build native Windows ACL helper for source checks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -Type Directory -Force -Path bin | Out-Null
+          go -C client build -o ../bin/remotebrowsermcp.exe .
+          "RB_ACL_HELPER=$((Resolve-Path bin/remotebrowsermcp.exe).Path)" >> $env:GITHUB_ENV
       - run: npm run check
       - run: node scripts/client-smoke.mjs
       - name: Verify real Windows login task with isolated synthetic Tunnel

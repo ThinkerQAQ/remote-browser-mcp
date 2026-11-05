@@ -48,9 +48,8 @@ RemoteBrowserMCP 就是为此而做的。它通过 MCP 提供浏览器操作能�
 在下载目录打开终端：
 
 
-```powershell
-$installer = (Get-ChildItem .\RemoteBrowserMCP-v*-windows-amd64.exe | Select-Object -First 1).FullName
-Start-Process -FilePath $installer -ArgumentList '--accept-licenses --default-answer --confirm-command install' -Wait
+```cmd
+for %F in (RemoteBrowserMCP-v*-windows-amd64.exe) do "%~fF" --accept-licenses --default-answer --confirm-command install
 ```
 
 
@@ -179,7 +178,7 @@ node scripts/client-smoke.mjs
 npm run audit:high
 ```
 
-`check` 运行单元与兼容性测试，`client-smoke.mjs` 验证离线 MCP 初始化与工具发现。Windows PowerShell 遇到脚本执行策略限制时，可以使用 `npm.cmd`。
+`check` 运行单元与兼容性测试，`client-smoke.mjs` 验证离线 MCP 初始化与工具发现。Windows CMD 直接运行 `npm.cmd`。
 
 代码变更通过 PR Review 和 Squash Merge 合入。安装包与正式版本的构建流程分别见 [Installer CI](.github/workflows/offline-installers.yml) 和 [Release CI](.github/workflows/release.yml)。
 

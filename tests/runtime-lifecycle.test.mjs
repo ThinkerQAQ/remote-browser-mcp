@@ -19,7 +19,7 @@ for (const auto of [false, undefined]) test(`worker separates local lifecycle an
   const setup={id:'tunnel_SYNTHETIC',revision:'saved-revision',tunnel:process.execPath,tunnelArgs:[path.join(root,'stub.mjs')],tunnel_auto_connect:auto};
   const setupFile=path.join(root,'runtime/setup.json'); fs.writeFileSync(setupFile,JSON.stringify(setup));
   fs.writeFileSync(path.join(root,'runtime/credentials.json'),JSON.stringify({apiKey:'synthetic-key'}));
-  const env={...process.env}; delete env.RB_ACL_HELPER;
+  const env={...process.env}; // In Windows tests, use the native Go ACL helper.
   const child=spawn(process.execPath,[path.join(root,'scripts/runtime.mjs'),'run'],{env,windowsHide:true,stdio:'ignore'});
   let control;
   const request=async(action,auth=true)=>{

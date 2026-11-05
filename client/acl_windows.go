@@ -12,7 +12,13 @@ func protectPrivate(path string, directory bool) error {
 	if e != nil {
 		return e
 	}
-	sd, e := windows.SecurityDescriptorFromString("D:P(A;;FA;;;" + user.User.Sid.String() + ")")
+	descriptor := "D:P(A;;FA;;;" + user.User.Sid.String() + ")"
+	if directory {
+		// Inherit the owner ACE to files and subdirectories. Without OICI,
+		// protecting a directory can strip inherited rights from children.
+		descriptor = "D:P(A;OICI;FA;;;" + user.User.Sid.String() + ")"
+	}
+	sd, e := windows.SecurityDescriptorFromString(descriptor)
 	if e != nil {
 		return e
 	}

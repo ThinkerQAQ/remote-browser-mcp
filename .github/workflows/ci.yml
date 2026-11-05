@@ -20,11 +20,22 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      - uses: actions/setup-go@v5
+        if: runner.os == 'Windows'
+        with:
+          go-version-file: client/go.mod
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Audit high and critical dependency vulnerabilities
         if: matrix.os == 'ubuntu-latest' && matrix.node == '24'
         run: npm audit --omit=dev --audit-level=high
+      - name: Build script-free native Windows ACL helper for tests
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -Type Directory -Force -Path bin | Out-Null
+          go -C client build -o ../bin/remotebrowsermcp.exe .
+          "RB_ACL_HELPER=$((Resolve-Path bin/remotebrowsermcp.exe).Path)" >> $env:GITHUB_ENV
       - name: Run offline security checks
         run: npm run check
       - name: Validate sample TOML

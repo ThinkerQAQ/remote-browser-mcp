@@ -76,11 +76,13 @@ def copy_app(source: Path, target: Path) -> None:
     for name in ("package.json", "package-lock.json", "config.example.toml",
                  "LICENSE", "THIRD_PARTY_NOTICES.md"):
         shutil.copy2(source / name, target / name)
-    shutil.copytree(source / "scripts", target / "scripts")
+    shutil.copytree(source / "scripts", target / "scripts",
+                    ignore=shutil.ignore_patterns("*.ps1", "*.sh", "*.cmd",
+                                                   "*.bat", "*.vbs", "*.py", "__pycache__"))
     # The npm-generated .bin launchers are unnecessary at runtime, and can be
     # platform-dependent symlinks. All actual runtime packages are retained.
     shutil.copytree(source / "node_modules", target / "node_modules",
-                    ignore=shutil.ignore_patterns(".bin"))
+                    ignore=shutil.ignore_patterns(".bin", "*.ps1", "*.sh", "*.cmd", "*.bat", "*.vbs", "*.py", "__pycache__"))
     brand = target / "brand"
     brand.mkdir()
     shutil.copy2(ROOT / "packaging/assets/remotebrowsermcp.ico", brand / "remotebrowsermcp.ico")
@@ -117,6 +119,14 @@ def build_client(stage: Path, platform: str, arch: str) -> None:
     subprocess.run(["go", "build", "-trimpath", "-o", str(target), "."],
                    check=True, cwd=ROOT / "client", env=env)
     target.chmod(0o755)
+    if platform == "windows":
+        # A GUI-subsystem copy is essential for HKCU Run at interactive login:
+        # the console CLI binary would flash a terminal on every logon.
+        host = stage / "bin" / "remotebrowsermcp-host.exe"
+        subprocess.run(["go", "build", "-trimpath", "-ldflags", "-H windowsgui",
+                        "-o", str(host), "."], check=True,
+                       cwd=ROOT / "client", env=env)
+        host.chmod(0o755)
     # Compiled Go dependencies must carry their redistribution licenses.
     for module, filename in (("golang.org/x/term", "Go-term-LICENSE.txt"),
                              ("golang.org/x/sys", "Go-sys-LICENSE.txt"),
@@ -181,6 +191,8 @@ def build(platform: str, arch: str, dest: Path, source: Path = ROOT) -> None:
                         "target": f"{platform}-{arch}", "node_archive_sha256": hashlib.sha256(node_archive).hexdigest(),
                         "tunnel_archive_sha256": hashlib.sha256(tunnel_archive).hexdigest()}, indent=2) + "\n")
         for item in stage.rglob("*"):
+            if item.is_file() and item.suffix.lower() in (".ps1", ".sh", ".cmd", ".bat", ".vbs", ".py"):
+                raise ValueError("Interpreter script leaked into user runtime: " + str(item))
             relative = item.relative_to(stage)
             # Allow legitimate dependency-internal data directories.
             if (relative.parts[0].lower() in PRIVATE_PARTS or
