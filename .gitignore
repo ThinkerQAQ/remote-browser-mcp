@@ -11,3 +11,7 @@ runtime/
 client/remotebrowsermcp*
 __pycache__/
 bin/
+
+# Local Devbox and Python development state
+.devbox/
+.venv/
